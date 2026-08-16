@@ -1,26 +1,356 @@
+﻿
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
+/* ============================================================
+   TYPE SYSTEM
+   Display: Fraunces — a warm, optical-size variable serif with
+   real personality (soft ink-trap curves, slight warmth) that
+   reads as premium and Indian-sunrise-adjacent without being a
+   cliché "AI cream+serif" pairing — it has enough character of
+   its own to carry a logo wordmark or a login headline.
+   Body/UI: Plus Jakarta Sans — a warm, slightly rounded grotesk,
+   more distinctive than Inter/Geist for a UI this size, still
+   fully legible at small sizes in dense tables.
+   Data/mono: IBM Plex Mono — for stock quantities, ledger
+   numbers, invoice figures. Tabular figures matter more than
+   character here.
+
+   In production, load these via next/font/google in the root
+   layout instead of @import (avoids a render-blocking request
+   and self-hosts the files):
+
+     import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
+
+     const fraunces = Fraunces({
+       subsets: ["latin"],
+       variable: "--font-display",
+       axes: ["opsz", "SOFT", "WONK"],
+     });
+     const jakarta = Plus_Jakarta_Sans({
+       subsets: ["latin"],
+       variable: "--font-sans",
+       weight: ["400", "500", "600", "700"],
+     });
+     const plexMono = IBM_Plex_Mono({
+       subsets: ["latin"],
+       variable: "--font-mono",
+       weight: ["400", "500"],
+     });
+
+     // apply fraunces.variable + jakarta.variable + plexMono.variable
+     // as classNames on <html> or <body>.
+
+   The @import below is a fallback for prototyping outside that
+   setup — remove it once next/font is wired in.
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---- Surfaces ---- */
+  --background: #FEF9F0;
+  --surface: #FFF7EE;
+  --surface-muted: #FFF1E0;
+  --surface-strong: #FFF1D9;
+  --surface-glass: rgba(255, 247, 238, 0.72);
+
+  /* ---- Text ---- */
+  --foreground: #36260F;
+  --muted: #6A5442;
+  --muted-soft: #8B7561;
+  --border: #E6C7A3;
+  --border-soft: #F0DBBC;
+
+  /* ---- Brand ---- */
+  --primary: #EA8A3B;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #D77630;
+  --primary-active: #B86225;
+  --primary-tint: #FBE3C6;
+  --secondary: #A28772;
+
+  /* Reserve gradient for one signature moment (hero, login card
+     edge, logo mark) — never on repeating UI elements like every
+     button or card, per restraint principle. */
+  --gradient-sunrise: linear-gradient(135deg, #FFC978 0%, #EA8A3B 55%, #C4621F 100%);
+  --gradient-hairline: linear-gradient(90deg, transparent, var(--primary), transparent);
+
+  /* ---- Semantic (kept visually distinct from brand saffron) ---- */
+  --success: #1E7A42;
+  --success-tint: #DEEFE2;
+  --error: #B72B28;
+  --error-tint: #F7E1E0;
+  --warning: #C76E12;
+  --warning-tint: #F9E6D2;
+
+  /* ---- Sidebar / Header ---- */
+  --sidebar-bg: #0F172A;
+  --sidebar-text: #94A3B8;
+  --sidebar-text-active: #F1F5F9;
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-active: rgba(234, 138, 59, 0.18);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --header-bg: #FFFFFF;
+  --header-border: #E6C7A3;
+  --header-shadow: 0 1px 3px rgba(76, 45, 11, 0.08), 0 4px 12px rgba(76, 45, 11, 0.06);
+
+  /* ---- Elevation ---- */
+  --shadow-xs: 0 1px 2px rgba(76, 45, 11, 0.06);
+  --shadow-sm: 0 4px 12px rgba(76, 45, 11, 0.08);
+  --shadow: 0 20px 60px rgba(76, 45, 11, 0.14);
+  --shadow-lg: 0 30px 80px rgba(76, 45, 11, 0.18);
+  --shadow-glow: 0 0 0 1px rgba(234, 138, 59, 0.12), 0 8px 24px rgba(234, 138, 59, 0.22);
+
+  /* ---- Radius ---- */
+  --radius-xs: 0.5rem;
+  --radius-sm: 1rem;
+  --radius: 1.5rem;
+  --radius-lg: 2rem;
+  --radius-full: 999px;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration: 220ms;
+
+  /* ---- Type scale (fluid — clamp between mobile and desktop) ---- */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
+  --text-xl: clamp(1.375rem, 1.25rem + 0.6vw, 1.625rem);
+  --text-2xl: clamp(1.75rem, 1.5rem + 1.1vw, 2.25rem);
+  --text-3xl: clamp(2.25rem, 1.85rem + 1.8vw, 3.25rem);
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.08em;
+  --tracking-widest: 0.22em;
+
+  --font-display: var(--font-display, "Fraunces", ui-serif, serif);
+  --font-sans: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif);
+  --font-mono: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-tight);
+    font-weight: 600;
+  }
+
+  /* Tabular figures wherever quantities/money render — stops
+     table rows from jittering as digits change width. */
+  .font-mono,
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(234, 138, 59, 0.18);
+    color: var(--foreground);
+  }
+
+  /* Warm-toned scrollbar instead of the OS default gray */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--surface-muted);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: var(--radius-full);
+    border: 2px solid var(--surface-muted);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+  }
+
+  /* Visible, on-brand keyboard focus — never remove focus outlines,
+     replace them with something intentional instead. */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .surface-card {
+    @apply rounded-[var(--radius)] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow)];
+  }
+
+  .surface-glass {
+    @apply rounded-[var(--radius)] border border-white/40 shadow-[var(--shadow-lg)] backdrop-blur-xl;
+    background: var(--surface-glass);
+  }
+
+  /* The one signature gradient surface — reserved for the login
+     hero panel / a dashboard welcome banner. Not for repeated use. */
+  .surface-sunrise {
+    @apply rounded-[var(--radius-lg)] text-white shadow-[var(--shadow-lg)];
+    background: var(--gradient-sunrise);
+  }
+
+  .brand-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-sm)] transition-all ease-out hover:bg-[var(--primary-hover)] hover:shadow-[var(--shadow-glow)] active:bg-[var(--primary-active)] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    transition-duration: var(--duration);
+  }
+
+  .neutral-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-all ease-out hover:border-[var(--secondary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50;
+    transition-duration: var(--duration);
+  }
+
+  .ghost-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] px-4 py-2.5 text-sm font-semibold text-[var(--muted)] transition-all ease-out hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)];
+    transition-duration: var(--duration);
+  }
+
+  .form-input {
+    @apply w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-white/95 px-4 py-3 text-base text-[var(--foreground)] outline-none transition-all ease-out placeholder:text-[var(--muted-soft)] focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(234,138,59,0.14)];
+    transition-duration: var(--duration);
+  }
+
+  .form-label {
+    @apply text-sm font-medium text-[var(--foreground)];
+  }
+
+  .badge-pill,
+  .badge-success,
+  .badge-error,
+  .badge-warning {
+    @apply inline-flex items-center rounded-[var(--radius-full)] px-3 py-1 text-xs font-semibold uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
+
+  .badge-success { background: var(--success-tint); color: var(--success); }
+  .badge-error   { background: var(--error-tint);   color: var(--error); }
+  .badge-warning { background: var(--warning-tint); color: var(--warning); }
+
+  /* Small credibility stat, e.g. login carousel overlay
+     ("PM Surya Ghar Registered Vendor", "500+ Installations") */
+  .stat-chip {
+    @apply inline-flex flex-col gap-0.5 px-4 py-3 rounded-[var(--radius)] border border-white/40 shadow-[var(--shadow-lg)] backdrop-blur-xl;
+    background: var(--surface-glass);
+  }
+  .stat-chip .stat-value {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .stat-chip .stat-label {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  /* Carousel dots — login page slider */
+  .carousel-dot {
+    @apply h-1.5 w-1.5 rounded-full bg-white/50 transition-all ease-out;
+    transition-duration: var(--duration);
+  }
+  .carousel-dot[data-active="true"] {
+    @apply w-6 bg-white;
+  }
+
+  /* Thin decorative rule used sparingly to separate a hero from
+     content — carries the sunrise gradient instead of a flat line. */
+  .hairline-sunrise {
+    height: 2px;
+    background: var(--gradient-hairline);
+    border: none;
+  }
+
+  /* ---- Loading states ---- */
+
+  /* Shimmering skeleton block — replaces flat pulse everywhere a
+     content placeholder is needed (loading.tsx, table row
+     placeholders, card placeholders). */
+  .skeleton {
+    @apply rounded-[var(--radius-sm)];
+    background: linear-gradient(
+      100deg,
+      var(--surface-muted) 30%,
+      var(--surface-strong) 50%,
+      var(--surface-muted) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  /* Fixed top bar for route/page-transition loading — a slim
+     sunrise-gradient sweep, not a full-page blocking spinner. */
+  .route-progress {
+    @apply fixed left-0 top-0 z-50 h-1 w-full overflow-hidden;
+    background: var(--surface-strong);
+  }
+  .route-progress::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: 40%;
+    background: var(--gradient-sunrise);
+    animation: route-sweep 1.2s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 5s linear infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+@keyframes route-sweep {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(60%); }
+  100% { transform: translateX(250%); }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
 }
