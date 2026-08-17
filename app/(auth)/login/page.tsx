@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { Sun, Zap, Shield, Users, TrendingUp, MapPin, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 
 const HERO_SLIDES = [
   {
@@ -120,10 +121,13 @@ export default function LoginPage() {
                   index === activeSlide ? 'opacity-100' : 'opacity-0'
                 }`}
               >
-                <img
+                <Image
                   src={slide.image}
                   alt={slide.title}
-                  className="h-full w-full object-cover"
+                  fill
+                  priority={index === activeSlide}
+                  sizes="(max-width: 1024px) 100vw, 55vw"
+                  className="object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
               </div>
@@ -134,17 +138,25 @@ export default function LoginPage() {
           <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-12">
             <div>
               <div className="flex items-center gap-3">
-                <div className="relative h-12 w-12 overflow-hidden rounded-xl">
+                <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-white/95 shadow-lg ring-1 ring-black/5">
+                  {/* <Image
+                    src="/sulekha_engineering_logo.jpeg"
+                    alt="Sulekha Engineering"
+                    width={48}
+                    height={48}
+                    className="h-full w-full object-contain p-1"
+                  /> */}
+
                   <img
                     src="/sulekha_engineering_logo.jpeg"
                     alt="Sulekha Engineering"
                     className="h-full w-full object-contain"
-                    width={48}
-                    height={48}
+                    width={36}
+                    height={36}
                   />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-white">Sulekha Engineering</p>
+                  <p className="text-lg font-semibold text-white">Sulekha Engineering dd</p>
                   <p className="text-xs text-white/70">PM Surya Ghar Vendor</p>
                 </div>
               </div>
@@ -202,13 +214,13 @@ export default function LoginPage() {
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="flex items-center gap-3 lg:hidden mb-8">
-              <div className="relative h-10 w-10 overflow-hidden rounded-xl">
-                <img
+              <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white/95 shadow-lg ring-1 ring-black/5">
+                <Image
                   src="/sulekha_engineering_logo.jpeg"
                   alt="Sulekha Engineering"
-                  className="h-full w-full object-contain"
                   width={40}
                   height={40}
+                  className="h-full w-full object-contain p-1"
                 />
               </div>
               <div>
@@ -226,10 +238,13 @@ export default function LoginPage() {
                     index === activeSlide ? 'opacity-100' : 'opacity-0'
                   }`}
                 >
-                  <img
+                  <Image
                     src={slide.image}
                     alt={slide.title}
-                    className="h-full w-full object-cover"
+                    fill
+                    priority={index === activeSlide}
+                    sizes="100vw"
+                    className="object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-4">

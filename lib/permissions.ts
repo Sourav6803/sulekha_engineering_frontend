@@ -44,3 +44,10 @@ const BOM_VIEWER_ROLES: AuthRole[] = ['admin', 'manager', 'warehouse_staff', 'in
 export const canManageBOMTemplates = (role?: AuthRole): boolean => (role ? BOM_EDITOR_ROLES.includes(role) : false);
 export const canDeleteBOMTemplate = (role?: AuthRole): boolean => (role === 'admin');
 export const canViewBOMTemplates = (role?: AuthRole): boolean => (role ? BOM_VIEWER_ROLES.includes(role) : false);
+
+const SUPPLIER_EDITOR_ROLES: AuthRole[] = ['admin', 'manager'];
+const SUPPLIER_VIEWER_ROLES: AuthRole[] = ['admin', 'manager', 'warehouse_staff', 'installation_team', 'viewer', 'administration'];
+
+export const canManageSuppliers = (role?: AuthRole): boolean => (role ? SUPPLIER_EDITOR_ROLES.includes(role) : false);
+export const canViewSuppliers = (role?: AuthRole): boolean => (role ? SUPPLIER_VIEWER_ROLES.includes(role) : false);
+export const canDeleteSupplier = (role?: AuthRole): boolean => (role === 'admin');

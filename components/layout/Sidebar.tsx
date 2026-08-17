@@ -53,13 +53,13 @@ export default function Sidebar() {
 
       <aside
         className={`flex h-full flex-col overflow-y-auto border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] transition-all duration-300 ease-out
-          fixed inset-y-0 left-0 z-50 lg:sticky lg:top-0 lg:z-30 lg:translate-x-0 lg:overflow-y-auto
+          fixed inset-y-0 left-0 z-50 lg:sticky lg:top-16 lg:z-30 lg:h-[calc(100vh-4rem)] lg:translate-x-0 lg:overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           ${isCollapsed ? "lg:w-[72px]" : "lg:w-64"}
           w-72`}
       >
         {/* Brand */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4">
+        {/* <div className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white">
               <Sun className="h-5 w-5" />
@@ -80,7 +80,7 @@ export default function Sidebar() {
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
+        </div> */}
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

@@ -1,56 +1,28 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Bell, PackageX, Wrench, Truck } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
+import { useNotifications } from "@/hooks/useNotifications";
+import type { UnifiedNotification } from "@/types/notification";
 
-interface NotificationItem {
-  id: string;
-  type: "low_stock" | "installation" | "purchase";
-  message: string;
-  timeAgo: string;
-  isRead: boolean;
-}
-
-// TODO: replace with `useNotifications()` (react-query, backed by
-// GET /notifications) once that hook exists. Shape matches the real
-// API response so swapping the data source is the only change
-// needed — this component's rendering logic stays the same.
-const DUMMY_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    type: "low_stock",
-    message: "AC Cable 4 sq mm 2 core Cu is running low — 8 mtr left",
-    timeAgo: "2h ago",
-    isRead: false,
-  },
-  {
-    id: "2",
-    type: "installation",
-    message: "Installation for Ramesh Chandra Das scheduled for tomorrow",
-    timeAgo: "5h ago",
-    isRead: false,
-  },
-  {
-    id: "3",
-    type: "purchase",
-    message: "Purchase from Bolpur Electricals marked complete",
-    timeAgo: "1d ago",
-    isRead: true,
-  },
-];
-
-const ICONS: Record<NotificationItem["type"], typeof PackageX> = {
+const ICONS: Record<string, typeof PackageX> = {
   low_stock: PackageX,
   installation: Wrench,
   purchase: Truck,
+  scheme: Bell,
+  external: Bell,
+  system: Bell,
 };
 
-const ICON_STYLES: Record<NotificationItem["type"], string> = {
+const ICON_STYLES: Record<string, string> = {
   low_stock: "bg-[var(--error-tint)] text-[var(--error)]",
   installation: "bg-[var(--primary-tint)] text-[var(--primary-active)]",
   purchase: "bg-[var(--success-tint)] text-[var(--success)]",
+  scheme: "bg-[var(--success-tint)] text-[var(--success)]",
+  external: "bg-[var(--surface-muted)] text-[var(--secondary)]",
+  system: "bg-[var(--primary-tint)] text-[var(--primary-active)]",
 };
 
 export function NotificationBell() {
@@ -58,7 +30,11 @@ export function NotificationBell() {
   const setOpen = useUIStore((state) => state.setNotificationMenuOpen);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = DUMMY_NOTIFICATIONS.filter((item) => !item.isRead).length;
+  const { notifications, unreadCount } = useNotifications();
+
+  const recentNotifications = useMemo(() => {
+    return notifications.slice(0, 8);
+  }, [notifications]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -113,30 +89,38 @@ export function NotificationBell() {
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {DUMMY_NOTIFICATIONS.map((item) => {
-              const Icon = ICONS[item.type];
-              return (
-                <div
-                  key={item.id}
-                  className={`flex gap-3 border-b border-[var(--border-soft)] px-4 py-3 last:border-0 ${
-                    item.isRead ? "opacity-60" : ""
-                  }`}
-                >
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ICON_STYLES[item.type]}`}
+            {recentNotifications.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-[var(--muted)]">No notifications yet</p>
+              </div>
+            ) : (
+              recentNotifications.map((item: UnifiedNotification) => {
+                const Icon = ICONS[item.type] ?? Bell;
+                const iconStyle = ICON_STYLES[item.type] ?? ICON_STYLES.system;
+                return (
+                  <div
+                    key={item._id}
+                    className={`flex gap-3 border-b border-[var(--border-soft)] px-4 py-3 last:border-0 ${
+                      !item.isRead ? "bg-[var(--surface-muted)]/30" : ""
+                    }`}
                   >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm leading-snug text-[var(--foreground)]">{item.message}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-soft)]">{item.timeAgo}</p>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${iconStyle}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-snug text-[var(--foreground)] line-clamp-1">{item.title}</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted-soft)] line-clamp-1">{item.message}</p>
+                      <p className="mt-1 text-xs text-[var(--muted-soft)]">
+                        {new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    {!item.isRead && (
+                      <span className="ml-auto mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                    )}
                   </div>
-                  {!item.isRead && (
-                    <span className="ml-auto mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
-                  )}
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           <Link

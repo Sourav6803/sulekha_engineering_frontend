@@ -48,13 +48,18 @@ export const ENDPOINTS = {
   suppliers: {
     root: '/suppliers',
     byId: (id: string) => `/suppliers/${id}`,
-    purchases: (id: string) => `/suppliers/${id}/purchases`
+    purchases: (id: string) => `/suppliers/${id}/purchases`,
+    bulk: '/suppliers/bulk',
+    performance: '/suppliers/analysis/performance'
   },
   notifications: {
     root: '/notifications',
     unreadCount: '/notifications/unread-count',
     read: (id: string) => `/notifications/${id}/read`,
-    readAll: '/notifications/read-all'
+    readAll: '/notifications/read-all',
+    external: '/notifications/external',
+    pmSuryaGhar: '/notifications/external/pm-surya-ghar',
+    unified: '/notifications/unified'
   },
   bomTemplates: {
     root: '/bom-templates',

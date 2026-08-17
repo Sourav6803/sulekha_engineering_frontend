@@ -72,7 +72,13 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
 
-    if (status === 401 && originalRequest && !originalRequest._retry) {
+    // A 401 from the login endpoint means "wrong credentials", NOT an expired
+    // session. Trying to refresh here is meaningless (no token exists yet) and
+    // the pending refresh-promise below would hang forever, so the caller's
+    // catch block never runs. Reject immediately with the original error.
+    const isLoginRequest = originalRequest?.url?.includes('/auth/login');
+
+    if (status === 401 && originalRequest && !originalRequest._retry && !isLoginRequest) {
       originalRequest._retry = true;
 
       if (!isRefreshing) {
@@ -82,6 +88,11 @@ axiosClient.interceptors.response.use(
 
         if (newToken) {
           onRefreshed(newToken);
+        } else {
+          // No refresh token (or refresh failed) — the original request will
+          // never be retried. Reject it so the caller can surface the error
+          // instead of waiting forever.
+          return Promise.reject(error);
         }
       }
 

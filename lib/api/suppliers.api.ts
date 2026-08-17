@@ -18,8 +18,8 @@ export interface SupplierListQuery {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface CreateSupplierDto extends Partial<SupplierDocument> {}
-export interface UpdateSupplierDto extends Partial<SupplierDocument> {}
+export type CreateSupplierDto = Partial<SupplierDocument>;
+export type UpdateSupplierDto = Partial<SupplierDocument>;
 
 export const suppliersApi = {
   list: (query?: SupplierListQuery) =>
@@ -42,5 +42,13 @@ export const suppliersApi = {
   getPurchases: (id: string, params?: { page?: number; limit?: number; dateFrom?: string; dateTo?: string; status?: string }) =>
     axiosClient
       .get<ApiResponse<PaginatedResponse<unknown>>>(ENDPOINTS.suppliers.purchases(id), { params })
-      .then((response) => response.data)
+      .then((response) => response.data),
+
+  bulkCreate: (payload: { suppliers: CreateSupplierDto[] }) =>
+    axiosClient.post<ApiResponse<unknown>>(`${ENDPOINTS.suppliers.root}/bulk`, payload).then((response) => response.data),
+
+  getPerformance: (params?: { dateFrom?: string; dateTo?: string; category?: string; minPurchases?: number }) =>
+    axiosClient
+      .get<ApiResponse<unknown>>(`${ENDPOINTS.suppliers.root}/analysis/performance`, { params })
+      .then((response) => response.data),
 };

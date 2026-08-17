@@ -85,7 +85,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       {/* Hero Carousel */}
-      <section className="relative h-[85vh] min-h-[600px] max-h-[900px] w-full overflow-hidden">
+      <section className="relative h-[65vh] min-h-[400px] max-h-[600px] w-full overflow-hidden">
         {HERO_SLIDES.map((slide, index) => (
           <div
             key={slide.id}
@@ -96,18 +96,18 @@ export default function HomePage() {
             <img
               src={slide.image}
               alt={slide.title}
-              
-              className="object-cover"
+              height={50}
+              className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
             <div className="relative z-10 flex h-full items-end">
               <div className="mx-auto max-w-7xl w-full px-4 pb-16 sm:px-6 lg:px-8">
                 <div className="max-w-3xl">
-                  <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  <h1 className="text-2xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
                     {slide.title}
                   </h1>
                   <p className="mt-4 text-xl text-white/90 sm:text-2xl">{slide.subtitle}</p>
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">{slide.description}</p>
+                  <p className="mt-4 max-w-xl text-base leading-7 text-white/80">{slide.description}</p>
                   <div className="mt-8 flex flex-wrap gap-4">
                     <Link href={slide.href} className="brand-button">
                       {slide.cta}
@@ -285,15 +285,15 @@ export default function HomePage() {
                 Check Eligibility
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
-              <a href="tel:+917908104098" className="neutral-button border-white/30 text-white hover:bg-white/10">
+              <a href="tel:+917908104098" className="neutral-button border-white/30 text-white bg-white/10">
                 <Phone className="mr-2 h-4 w-4" />
                 Call Now
               </a>
             </div>
             <p className="mt-6 text-sm text-white/60">
               Or email us at{' '}
-              <a href="mailto:souravbhukta8@gmail.com" className="text-white underline">
-                souravbhukta8@gmail.com
+              <a href="mailto:sulekhaenginnering.com" className="text-white underline">
+                sulekhaenginnering.com
               </a>
             </p>
           </div>
@@ -311,8 +311,8 @@ export default function HomePage() {
                     src="/sulekha_engineering_logo.jpeg"
                     alt="Sulekha Engineering"
                     className="h-full w-full object-contain"
-                    width={40}
-                    height={40}
+                    width={30}
+                    height={30}
                   />
                 </div>
                 <div>
