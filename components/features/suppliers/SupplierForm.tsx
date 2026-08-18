@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { CreateSupplierDto, UpdateSupplierDto } from '@/lib/api/suppliers.api';
 import type { SupplierDocument, SupplierBusinessType, SupplierPaymentTerms, SupplierStatus } from '@/types/supplier';
 
@@ -110,7 +110,7 @@ interface FieldProps {
   children: React.ReactNode;
 }
 
-function Field({ label, required, hint, children }: FieldProps) {
+function Field({ label, required, hint, children, error }: FieldProps & { error?: string }) {
   return (
     <label className="block space-y-2">
       <span className="form-label">
@@ -119,6 +119,7 @@ function Field({ label, required, hint, children }: FieldProps) {
       </span>
       {children}
       {hint && <span className="block text-xs text-[var(--muted-soft)]">{hint}</span>}
+      {error && <span className="block text-xs text-[var(--error)]">{error}</span>}
     </label>
   );
 }
@@ -133,36 +134,135 @@ function toggleCategory(current: string[], value: string) {
 export function SupplierForm({ initial, mode, submitting = false, onSubmit }: SupplierFormProps) {
   const [form, setForm] = useState<FormState>(() => (initial ? fromSupplier(initial) : emptyForm()));
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const validationMessage = useMemo(() => {
-    if (!form.name.trim()) return 'Supplier name is required.';
-    if (form.name.trim().length < 2) return 'Supplier name must be at least 2 characters.';
-    if (!form.phone.trim()) return 'Phone number is required.';
-    if (!/^[0-9]{10}$/.test(form.phone.trim())) return 'Please enter a valid 10-digit phone number.';
-    if (!form.address.trim()) return 'Address is required.';
-    if (!form.city.trim()) return 'City is required.';
-    if (!form.state.trim()) return 'State is required.';
-    if (!form.pincode.trim()) return 'Pincode is required.';
-    if (!/^[0-9]{6}$/.test(form.pincode.trim())) return 'Please enter a valid 6-digit pincode.';
+  const validateField = (key: keyof FormState, value: FormState[keyof FormState]): string | undefined => {
+    switch (key) {
+      case 'name': {
+        const v = value as string;
+        if (!v.trim()) return 'Supplier name is required.';
+        if (v.trim().length < 2) return 'Supplier name must be at least 2 characters.';
+        if (v.trim().length > 100) return 'Supplier name cannot exceed 100 characters.';
+        return undefined;
+      }
+      case 'phone': {
+        const v = value as string;
+        if (!v.trim()) return 'Phone number is required.';
+        if (!/^[0-9]{10}$/.test(v.trim())) return 'Please enter a valid 10-digit phone number.';
+        return undefined;
+      }
+      case 'alternatePhone': {
+        const v = value as string;
+        if (v.trim() && !/^[0-9]{10}$/.test(v.trim())) return 'Please enter a valid 10-digit phone number.';
+        return undefined;
+      }
+      case 'email': {
+        const v = value as string;
+        if (v.trim() && !/^\S+@\S+\.\S+$/.test(v.trim())) return 'Please enter a valid email address.';
+        return undefined;
+      }
+      case 'website': {
+        const v = value as string;
+        if (v.trim()) {
+          try { new URL(v.trim()); }
+          catch { return 'Please enter a valid website URL (e.g. https://example.com).'; }
+        }
+        return undefined;
+      }
+      case 'address':
+        if (!(value as string).trim()) return 'Address is required.';
+        return undefined;
+      case 'city':
+        if (!(value as string).trim()) return 'City is required.';
+        return undefined;
+      case 'state':
+        if (!(value as string).trim()) return 'State is required.';
+        return undefined;
+      case 'pincode': {
+        const v = value as string;
+        if (!v.trim()) return 'Pincode is required.';
+        if (!/^[0-9]{6}$/.test(v.trim())) return 'Please enter a valid 6-digit pincode.';
+        return undefined;
+      }
+      case 'gstNumber': {
+        const v = value as string;
+        if (v.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(v.trim())) return 'Please enter a valid GST number (e.g. 22AAAAA0000A1Z5).';
+        return undefined;
+      }
+      case 'panNumber': {
+        const v = value as string;
+        if (v.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v.trim())) return 'Please enter a valid PAN number (e.g. ABCDE1234F).';
+        return undefined;
+      }
+      case 'categories':
+        if ((value as string[]).length === 0) return 'Select at least one category.';
+        return undefined;
+      case 'creditLimit': {
+        const n = toNumber(value as string);
+        if (n != null && n < 0) return 'Credit limit cannot be negative.';
+        return undefined;
+      }
+      case 'qualityRating': {
+        const n = toNumber(value as string);
+        if (n != null && (n < 0 || n > 5)) return 'Quality rating must be between 0 and 5.';
+        return undefined;
+      }
+      case 'ifscCode': {
+        const v = value as string;
+        if (v.trim() && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.trim())) return 'Please enter a valid IFSC code (e.g. SBIN0012345).';
+        return undefined;
+      }
+      case 'upiId': {
+        const v = value as string;
+        if (v.trim() && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(v.trim())) return 'Please enter a valid UPI ID (e.g. example@upi).';
+        return undefined;
+      }
+      default:
+        return undefined;
+    }
+  };
 
-    const creditLimit = toNumber(form.creditLimit);
-    if (creditLimit != null && creditLimit < 0) return 'Credit limit cannot be negative.';
+  const handleBlur = (key: keyof FormState) => {
+    setTouched((prev) => ({ ...prev, [key]: true }));
+    const error = validateField(key, form[key]);
+    setFieldErrors((prev) => ({ ...prev, [key]: error }));
+  };
 
-    const qualityRating = toNumber(form.qualityRating);
-    if (qualityRating != null && (qualityRating < 0 || qualityRating > 5)) return 'Quality rating must be between 0 and 5.';
+  const handleChange = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    set(key, value);
+    if (fieldErrors[key]) {
+      const error = validateField(key, value);
+      setFieldErrors((prev) => ({ ...prev, [key]: error }));
+    }
+  };
 
-    if (form.categories.length === 0) return 'Select at least one category.';
-
-    return null;
-  }, [form]);
+  const validateAll = (): boolean => {
+    const keys: (keyof FormState)[] = ['name', 'phone', 'alternatePhone', 'email', 'website', 'address', 'city', 'state', 'pincode', 'gstNumber', 'panNumber', 'categories', 'creditLimit', 'qualityRating', 'ifscCode', 'upiId'];
+    const errors: Partial<Record<keyof FormState, string>> = {};
+    let hasError = false;
+    for (const key of keys) {
+      const error = validateField(key, form[key]);
+      if (error) {
+        errors[key] = error;
+        hasError = true;
+      }
+    }
+    setFieldErrors(errors);
+    setTouched(
+      keys.reduce((acc, key) => ({ ...acc, [key]: true }), {} as Record<keyof FormState, boolean>)
+    );
+    return hasError;
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (validationMessage) {
-      setFormError(validationMessage);
+    if (validateAll()) {
+      const firstError = Object.values(fieldErrors).find((e) => e) || 'Please fix the errors above.';
+      setFormError(firstError);
       return;
     }
     setFormError(null);
@@ -214,84 +314,93 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Basic information</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Supplier name" required>
+            <Field label="Supplier name" required error={touched.name ? fieldErrors.name : undefined}>
               <input
                 className={inputClass}
                 value={form.name}
-                onChange={(e) => set('name', e.target.value)}
+                onChange={(e) => handleChange('name', e.target.value)}
+                onBlur={() => handleBlur('name')}
                 placeholder="e.g. ABC Solar Solutions"
                 maxLength={100}
               />
             </Field>
           </div>
-          <Field label="Phone number" required>
+          <Field label="Phone number" required error={touched.phone ? fieldErrors.phone : undefined}>
             <input
               className={inputClass}
               value={form.phone}
-              onChange={(e) => set('phone', e.target.value)}
+              onChange={(e) => handleChange('phone', e.target.value)}
+              onBlur={() => handleBlur('phone')}
               placeholder="10-digit mobile number"
               maxLength={10}
             />
           </Field>
-          <Field label="Alternate phone">
+          <Field label="Alternate phone" error={touched.alternatePhone ? fieldErrors.alternatePhone : undefined}>
             <input
               className={inputClass}
               value={form.alternatePhone}
-              onChange={(e) => set('alternatePhone', e.target.value)}
+              onChange={(e) => handleChange('alternatePhone', e.target.value)}
+              onBlur={() => handleBlur('alternatePhone')}
               placeholder="Optional alternate number"
               maxLength={10}
             />
           </Field>
-          <Field label="Email">
+          <Field label="Email" error={touched.email ? fieldErrors.email : undefined}>
             <input
               className={inputClass}
               type="email"
               value={form.email}
-              onChange={(e) => set('email', e.target.value)}
+              onChange={(e) => handleChange('email', e.target.value)}
+              onBlur={() => handleBlur('email')}
               placeholder="contact@example.com"
             />
           </Field>
-          <Field label="Website">
+          <Field label="Website" error={touched.website ? fieldErrors.website : undefined}>
             <input
               className={inputClass}
               type="url"
               value={form.website}
-              onChange={(e) => set('website', e.target.value)}
+              onChange={(e) => handleChange('website', e.target.value)}
+              onBlur={() => handleBlur('website')}
               placeholder="https://example.com"
             />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="Address" required>
+            <Field label="Address" required error={touched.address ? fieldErrors.address : undefined}>
               <textarea
                 className={inputClass}
                 value={form.address}
-                onChange={(e) => set('address', e.target.value)}
+                onChange={(e) => handleChange('address', e.target.value)}
+                onBlur={() => handleBlur('address')}
                 placeholder="Street address, locality"
                 rows={2}
               />
             </Field>
           </div>
-          <Field label="City" required>
+          <Field label="City" required error={touched.city ? fieldErrors.city : undefined}>
             <input
               className={inputClass}
               value={form.city}
-              onChange={(e) => set('city', e.target.value)}
+              onChange={(e) => handleChange('city', e.target.value)}
+              onBlur={() => handleBlur('city')}
               placeholder="e.g. Durgapur"
             />
           </Field>
-          <Field label="State" required>
+          <Field label="State" required error={touched.state ? fieldErrors.state : undefined}>
             <input
               className={inputClass}
               value={form.state}
-              onChange={(e) => set('state', e.target.value)}
+              onChange={(e) => handleChange('state', e.target.value)}
+              onBlur={() => handleBlur('state')}
               placeholder="e.g. West Bengal"
             />
           </Field>
-          <Field label="Pincode" required>
+          <Field label="Pincode" required error={touched.pincode ? fieldErrors.pincode : undefined}>
             <input
               className={inputClass}
               value={form.pincode}
-              onChange={(e) => set('pincode', e.target.value)}
+              onChange={(e) => handleChange('pincode', e.target.value)}
+              onBlur={() => handleBlur('pincode')}
               placeholder="6-digit pincode"
               maxLength={6}
             />
@@ -303,29 +412,32 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Business details</h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="GST number">
+          <Field label="GST number" error={touched.gstNumber ? fieldErrors.gstNumber : undefined}>
             <input
               className={inputClass}
               value={form.gstNumber}
-              onChange={(e) => set('gstNumber', e.target.value.toUpperCase())}
+              onChange={(e) => handleChange('gstNumber', e.target.value.toUpperCase())}
+              onBlur={() => handleBlur('gstNumber')}
               placeholder="e.g. 22AAAAA0000A1Z5"
               maxLength={15}
             />
           </Field>
-          <Field label="PAN number">
+          <Field label="PAN number" error={touched.panNumber ? fieldErrors.panNumber : undefined}>
             <input
               className={inputClass}
               value={form.panNumber}
-              onChange={(e) => set('panNumber', e.target.value.toUpperCase())}
+              onChange={(e) => handleChange('panNumber', e.target.value.toUpperCase())}
+              onBlur={() => handleBlur('panNumber')}
               placeholder="e.g. ABCDE1234F"
               maxLength={10}
             />
           </Field>
-          <Field label="Business type">
+          <Field label="Business type" error={touched.businessType ? fieldErrors.businessType : undefined}>
             <select
               className={selectClass}
               value={form.businessType}
-              onChange={(e) => set('businessType', e.target.value as SupplierBusinessType | '')}
+              onChange={(e) => handleChange('businessType', e.target.value as SupplierBusinessType | '')}
+              onBlur={() => handleBlur('businessType')}
             >
               <option value="">Select type</option>
               {BUSINESS_TYPES.map((type) => (
@@ -339,7 +451,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             <select
               className={selectClass}
               value={form.status}
-              onChange={(e) => set('status', e.target.value as SupplierStatus)}
+              onChange={(e) => handleChange('status', e.target.value as SupplierStatus)}
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
@@ -349,7 +461,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             </select>
           </Field>
           <div className="sm:col-span-2">
-            <Field label="Categories">
+            <Field label="Categories" error={touched.categories && fieldErrors.categories ? fieldErrors.categories : undefined}>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((category) => {
                   const selected = form.categories.includes(category);
@@ -357,7 +469,13 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
                     <button
                       key={category}
                       type="button"
-                      onClick={() => set('categories', toggleCategory(form.categories, category))}
+                      onClick={() => {
+                        handleChange('categories', toggleCategory(form.categories, category));
+                        if (touched.categories) {
+                          const error = validateField('categories', toggleCategory(form.categories, category));
+                          setFieldErrors((prev) => ({ ...prev, categories: error }));
+                        }
+                      }}
                       className={`badge-pill cursor-pointer border transition-colors ${
                         selected ? 'border-[var(--primary)] bg-[var(--primary-tint)] text-[var(--primary)]' : 'border-[var(--border)] bg-white text-[var(--muted)]'
                       }`}
@@ -380,7 +498,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             <select
               className={selectClass}
               value={form.paymentTerms}
-              onChange={(e) => set('paymentTerms', e.target.value as SupplierPaymentTerms | '')}
+              onChange={(e) => handleChange('paymentTerms', e.target.value as SupplierPaymentTerms | '')}
             >
               <option value="">Select terms</option>
               {PAYMENT_TERMS.map((term) => (
@@ -390,21 +508,23 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
               ))}
             </select>
           </Field>
-          <Field label="Credit limit">
+          <Field label="Credit limit" error={touched.creditLimit ? fieldErrors.creditLimit : undefined}>
             <input
               className={inputClass}
               value={form.creditLimit}
-              onChange={(e) => set('creditLimit', e.target.value)}
+              onChange={(e) => handleChange('creditLimit', e.target.value)}
+              onBlur={() => handleBlur('creditLimit')}
               placeholder="e.g. 100000"
               type="number"
               min={0}
             />
           </Field>
-          <Field label="Quality rating (0-5)">
+          <Field label="Quality rating (0-5)" error={touched.qualityRating ? fieldErrors.qualityRating : undefined}>
             <input
               className={inputClass}
               value={form.qualityRating}
-              onChange={(e) => set('qualityRating', e.target.value)}
+              onChange={(e) => handleChange('qualityRating', e.target.value)}
+              onBlur={() => handleBlur('qualityRating')}
               placeholder="e.g. 4"
               type="number"
               min={0}
@@ -423,7 +543,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             <input
               className={inputClass}
               value={form.bankAccountHolderName}
-              onChange={(e) => set('bankAccountHolderName', e.target.value)}
+              onChange={(e) => handleChange('bankAccountHolderName', e.target.value)}
               placeholder="Name as per bank"
             />
           </Field>
@@ -431,7 +551,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             <input
               className={inputClass}
               value={form.bankName}
-              onChange={(e) => set('bankName', e.target.value)}
+              onChange={(e) => handleChange('bankName', e.target.value)}
               placeholder="e.g. State Bank of India"
             />
           </Field>
@@ -439,25 +559,27 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
             <input
               className={inputClass}
               value={form.bankAccountNumber}
-              onChange={(e) => set('bankAccountNumber', e.target.value)}
+              onChange={(e) => handleChange('bankAccountNumber', e.target.value)}
               placeholder="Bank account number"
             />
           </Field>
-          <Field label="IFSC code">
+          <Field label="IFSC code" error={touched.ifscCode ? fieldErrors.ifscCode : undefined}>
             <input
               className={inputClass}
               value={form.ifscCode}
-              onChange={(e) => set('ifscCode', e.target.value.toUpperCase())}
+              onChange={(e) => handleChange('ifscCode', e.target.value.toUpperCase())}
+              onBlur={() => handleBlur('ifscCode')}
               placeholder="e.g. SBIN0012345"
               maxLength={11}
             />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="UPI ID">
+            <Field label="UPI ID" error={touched.upiId ? fieldErrors.upiId : undefined}>
               <input
                 className={inputClass}
                 value={form.upiId}
-                onChange={(e) => set('upiId', e.target.value)}
+                onChange={(e) => handleChange('upiId', e.target.value)}
+                onBlur={() => handleBlur('upiId')}
                 placeholder="e.g. example@upi"
               />
             </Field>
@@ -482,7 +604,7 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
 
       <div className="flex items-center justify-end gap-3">
         <button
-          type="button"
+          type="submit"
           className="brand-button"
           disabled={submitting}
         >
