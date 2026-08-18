@@ -11,6 +11,10 @@ export const handleApiError = (error: unknown): string => {
         return data.message;
       }
       if (axiosError.response.status === 401) {
+        const isLoginRequest = axiosError.config?.url?.includes('/auth/login');
+        if (isLoginRequest) {
+          return ERROR_MESSAGES.invalidCredentials;
+        }
         return ERROR_MESSAGES.unauthorized;
       }
       return data?.errors?.[0] ?? ERROR_MESSAGES.default;

@@ -15,6 +15,7 @@ interface MaterialFormProps {
 
 interface FormState {
   name: string;
+  description: string;
   unit: MaterialUnit | '';
   unitCost: string;
   currentStock: string;
@@ -27,6 +28,7 @@ interface FormState {
 
 const emptyForm = (): FormState => ({
   name: '',
+  description: '',
   unit: '',
   unitCost: '',
   currentStock: '',
@@ -50,6 +52,7 @@ function fromMaterial(material: MaterialDocument): FormState {
 
   return {
     name: material.name ?? '',
+    description: material.description ?? '',
     unit: (material.unit as MaterialUnit) ?? '',
     unitCost: material.unitCost != null ? String(material.unitCost) : '',
     currentStock: material.currentStock != null ? String(material.currentStock) : '',
@@ -106,6 +109,7 @@ export function MaterialForm({ initial, mode, submitting = false, onSubmit }: Ma
     if (!form.name.trim()) return 'Material name is required.';
     if (form.name.trim().length < 2) return 'Material name must be at least 2 characters.';
     if (form.name.trim().length > 100) return 'Material name cannot exceed 100 characters.';
+    if (form.description.trim().length > 200) return 'Description cannot exceed 200 characters.';
     if (!form.unit) return 'Unit is required.';
 
     const unitCost = toNumber(form.unitCost);
@@ -137,6 +141,7 @@ export function MaterialForm({ initial, mode, submitting = false, onSubmit }: Ma
 
     const payload: CreateMaterialDto & UpdateMaterialDto = {
       name: form.name.trim(),
+      description: form.description.trim() || undefined,
       unit: form.unit as MaterialUnit,
       unitCost: toNumber(form.unitCost),
       minimumStockLevel: toNumber(form.minimumStockLevel),
@@ -179,6 +184,18 @@ export function MaterialForm({ initial, mode, submitting = false, onSubmit }: Ma
                 onChange={(e) => set('name', e.target.value)}
                 placeholder="e.g. 550W Mono PERC Solar Panel"
                 maxLength={100}
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Description" hint="Brief details about the material (max 200 characters)">
+              <textarea
+                className={inputClass}
+                value={form.description}
+                onChange={(e) => set('description', e.target.value)}
+                placeholder="e.g. BIS certified, 25-year warranty, suitable for rooftop installations"
+                rows={3}
+                maxLength={200}
               />
             </Field>
           </div>

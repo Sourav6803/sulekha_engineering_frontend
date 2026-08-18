@@ -98,12 +98,9 @@ export default function LoginPage() {
       await login({ email: form.email.trim(), password: form.password.trim() });
       toast.success('Welcome back', { description: 'You are now signed in to the Sulekha Engineering console.' });
       setLoginSuccess(true);
-    } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : 'Invalid email or password';
-      setValidationError(message);
-      setTimeout(() => {
-        toast.error('Sign in failed', { description: message, duration: 5000 });
-      }, 50);
+    } catch {
+      // useAuth.login() sets its own `error` state on failure;
+      // the useEffect watching `error` handles the single toast.
     }
   };
 
