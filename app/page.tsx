@@ -307,8 +307,8 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3">
                 <div className="relative h-10 w-10 overflow-hidden rounded-full">
-                  <img
-                    src="/sulekha_engineering_logo.jpeg"
+                  <Image
+                    src="/icon.png"
                     alt="Sulekha Engineering"
                     className="h-full w-full object-contain"
                     width={30}

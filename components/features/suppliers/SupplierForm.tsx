@@ -240,24 +240,46 @@ export function SupplierForm({ initial, mode, submitting = false, onSubmit }: Su
     }
   };
 
+  // const validateAll = (): boolean => {
+  //   const keys: (keyof FormState)[] = ['name', 'phone', 'alternatePhone', 'email', 'website', 'address', 'city', 'state', 'pincode', 'gstNumber', 'panNumber', 'categories', 'creditLimit', 'qualityRating', 'ifscCode', 'upiId'];
+  //   const errors: Partial<Record<keyof FormState, string>> = {};
+  //   let hasError = false;
+  //   for (const key of keys) {
+  //     const error = validateField(key, form[key]);
+  //     if (error) {
+  //       errors[key] = error;
+  //       hasError = true;
+  //     }
+  //   }
+  //   setFieldErrors(errors);
+  //   setTouched(
+  //     keys.reduce((acc, key) => ({ ...acc, [key]: true }), {} as Record<keyof FormState, boolean>)
+  //   );
+  //   return hasError;
+  // };
+
+
   const validateAll = (): boolean => {
     const keys: (keyof FormState)[] = ['name', 'phone', 'alternatePhone', 'email', 'website', 'address', 'city', 'state', 'pincode', 'gstNumber', 'panNumber', 'categories', 'creditLimit', 'qualityRating', 'ifscCode', 'upiId'];
-    const errors: Partial<Record<keyof FormState, string>> = {};
-    let hasError = false;
+    const newErrors: Partial<Record<keyof FormState, string>> = {};
+    let foundError = false;
+
     for (const key of keys) {
       const error = validateField(key, form[key]);
       if (error) {
-        errors[key] = error;
-        hasError = true;
+        newErrors[key] = error;
+        foundError = true;
       }
     }
-    setFieldErrors(errors);
+
+    setFieldErrors(newErrors);
     setTouched(
       keys.reduce((acc, key) => ({ ...acc, [key]: true }), {} as Record<keyof FormState, boolean>)
     );
-    return hasError;
-  };
 
+    return foundError;
+  };
+  
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (validateAll()) {

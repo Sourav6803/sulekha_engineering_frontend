@@ -14,15 +14,51 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// export const metadata: Metadata = {
+//   title: "Sulekha Engineering | Inventory & Installations",
+//   description:
+//     "Internal inventory and installation management for PM Surya Ghar Muft Bijli Yojana vendors.",
+//   icons: {
+//     icon: "/icon.png",
+//     apple: "/icon.png",
+//   },
+// };
+
+
 export const metadata: Metadata = {
   title: "Sulekha Engineering | Inventory & Installations",
   description:
     "Internal inventory and installation management for PM Surya Ghar Muft Bijli Yojana vendors.",
+  metadataBase: new URL('https://sulekha-engineering-frontend.vercel.app/'), // Replace with your actual domain
   icons: {
-    icon: "/sulekha_engineering_logo.jpeg",
-    apple: "/sulekha_engineering_logo.jpeg",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
+  openGraph: {
+    title: "Sulekha Engineering",
+    description: "Powering a Greener Tomorrow with Sustainable Solar Engineering.",
+    url: "https://sulekha-engineering-frontend.vercel.app/",
+    siteName: "Sulekha Engineering",
+    images: [
+      {
+        url: "/logo.jpeg", // Use your full logo for shared links
+        width: 1200,
+        height: 630,
+        alt: "Sulekha Engineering Logo",
+      },
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sulekha Engineering",
+    description: "Powering a Greener Tomorrow",
+    images: ["/logo.jpeg"],
   },
 };
+
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

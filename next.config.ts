@@ -24,26 +24,44 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // images: {
+  //   remotePatterns: [
+  //     {
+  //       protocol: 'https',
+  //       hostname: '**', // Allow all HTTPS images (adjust for production)
+  //     },
+  //     {
+  //       protocol: 'http',
+  //       hostname: 'localhost',
+  //       port: '5000',
+  //     },
+  //   ],
+  // },
   images: {
-    // Replace deprecated domains with remotePatterns
+    // Add this to ensure local public images are handled correctly if you have a custom loader
+    unoptimized: process.env.NODE_ENV === 'development', 
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**', // Allow all HTTPS images (adjust for production)
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '5000',
-      },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: 'localhost', port: '5000' },
     ],
   },
+  
   devIndicators: false, 
-  // Enable React strict mode for better development
   reactStrictMode: true,
-  // Turbopack configuration (for Next.js 15+)
   turbopack: {
-    // Optional: Configure turbopack if needed
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'unload=()',
+          },
+        ],
+      },
+    ];
   },
 };
 
