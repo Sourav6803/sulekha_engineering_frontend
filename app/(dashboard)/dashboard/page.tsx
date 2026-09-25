@@ -1,8 +1,18 @@
-﻿'use client';
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import Link from 'next/link';
-import { Bell, PackageX, TrendingUp, Users, Wrench, AlertTriangle } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  CalendarClock,
+  PackageX,
+  ShieldCheck,
+  Sun,
+  TrendingUp,
+  Users,
+  Wrench,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { materialsApi } from '@/lib/api/materials.api';
 import { installationsApi } from '@/lib/api/installations.api';
@@ -43,6 +53,46 @@ const SCHEME_STATS = [
   { label: 'Subsidy on solar', value: 'Up to 60%' },
   { label: 'Last date to apply', value: '31 March 2027' },
 ];
+
+const SCHEME_HIGHLIGHTS = [
+  { label: 'Rooftop Solar', tone: 'bg-[var(--primary-tint)] text-[var(--primary-active)]' },
+  { label: 'Free Electricity', tone: 'bg-[var(--success-tint)] text-[var(--success)]' },
+  { label: '60% Subsidy', tone: 'bg-[var(--primary-tint)] text-[var(--primary-active)]' },
+  { label: 'Clean Energy', tone: 'bg-[var(--success-tint)] text-[var(--success)]' },
+];
+
+type MetricCardProps = {
+  label: string;
+  value: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: string;
+  chip: string;
+};
+
+/**
+ * One KPI tile.
+ *
+ * The label wraps freely but the figure is clamped with
+ * `overflow-wrap: anywhere`, so a long value such as "Rs 12,34,56,789" breaks
+ * inside the tile instead of spilling past its edge.
+ */
+function MetricCard({ label, value, icon: Icon, tone, chip }: MetricCardProps) {
+  return (
+    <div className="panel p-4 transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)] sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-[11px] font-semibold uppercase leading-4 tracking-[0.12em] text-[var(--muted)]">
+          {label}
+        </p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.65rem] ${chip}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className={`mt-3 text-2xl font-semibold leading-none tabular-nums [overflow-wrap:anywhere] ${tone}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<MaterialSummary | null>(null);
@@ -92,143 +142,139 @@ export default function DashboardPage() {
   const pendingPurchases = purchases.filter(p => p.status === 'pending' || p.status === 'processing').length;
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-8">
-        {/* Hero Header */}
-        <header className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/95 p-8 shadow-[var(--shadow)]">
-          <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
-            <img
-              src="/sulekha_engineering_logo.jpeg"
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full object-contain opacity-[0.08]"
-            />
-          </div>
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-3">
-              <p className="text-sm uppercase tracking-[0.24em] text-[var(--primary)]">
+    <main className="canvas-warm min-h-screen px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-7">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-5">
+        {/* Hero - a slim welcome banner rather than a deep panel, so the
+            operational numbers below stay near the fold. */}
+        <header className="panel relative overflow-hidden p-5 sm:p-6">
+          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-[var(--gradient-sunrise)]" />
+          <img
+            src="/sulekha_engineering_logo.jpeg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-6 -top-8 h-40 w-40 object-contain opacity-[0.06]"
+          />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary-active)]">
                 PM Surya Ghar Vendor Portal
               </p>
-              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              <h1 className="text-2xl font-semibold leading-tight text-[var(--foreground)]">
                 Sulekha Engineering Dashboard
               </h1>
-              <p className="max-w-2xl text-base leading-7 text-[var(--muted)]">
-                Manage installations, inventory, and customer records for PM Surya Ghar Muft Bijli Yojana.
+              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                Manage installations, inventory and customer records for the PM Surya Ghar Muft Bijli Yojana.
               </p>
+              <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5 text-xs text-[var(--muted-soft)]">
+                <li className="inline-flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[var(--success)]" />
+                  Registered vendor
+                </li>
+                <li aria-hidden="true" className="text-[var(--border)]">•</li>
+                <li className="inline-flex items-center gap-1.5">
+                  <Sun className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  Rooftop solar up to 6 kW
+                </li>
+                <li aria-hidden="true" className="text-[var(--border)]">•</li>
+                <li className="inline-flex items-center gap-1.5">
+                  <CalendarClock className="h-3.5 w-3.5 text-[var(--secondary)]" />
+                  Applications open until 31 Mar 2027
+                </li>
+              </ul>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/installations/new" className="brand-button">
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link href="/installations/new" className="brand-button px-4 py-2.5">
                 New installation
               </Link>
-              <Link href="/purchases" className="neutral-button">
+              <Link href="/purchases" className="neutral-button px-4 py-2.5">
                 Purchase request
               </Link>
             </div>
           </div>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="surface-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">Total customers</p>
-                <p className="mt-4 text-3xl font-semibold text-[var(--foreground)]">
-                  {loading ? '...' : formatNumber(totalCustomers)}
-                </p>
-              </div>
-              <div className="rounded-full bg-[var(--primary-tint)] p-3 text-[var(--primary-active)]">
-                <Users className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="surface-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">Pending installations</p>
-                <p className="mt-4 text-3xl font-semibold text-[var(--primary)]">
-                  {loading ? '...' : formatNumber(pendingInstallations)}
-                </p>
-              </div>
-              <div className="rounded-full bg-[var(--primary-tint)] p-3 text-[var(--primary-active)]">
-                <Wrench className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="surface-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">Stock value</p>
-                <p className="mt-4 text-3xl font-semibold text-[var(--foreground)]">
-                  {loading ? '...' : summary ? `₹${formatNumber(summary.totalStockValue)}` : '₹0'}
-                </p>
-              </div>
-              <div className="rounded-full bg-[var(--success-tint)] p-3 text-[var(--success)]">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="surface-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">Low stock items</p>
-                <p className="mt-4 text-3xl font-semibold text-[var(--error)]">
-                  {loading ? '...' : formatNumber(summary?.lowStockCount ?? 0)}
-                </p>
-              </div>
-              <div className="rounded-full bg-[var(--error-tint)] p-3 text-[var(--error)]">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
+        {/* KPI tiles — compact, overflow-proof */}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Total customers"
+            value={loading ? '…' : formatNumber(totalCustomers)}
+            icon={Users}
+            tone="text-[var(--foreground)]"
+            chip="bg-[var(--primary-tint)] text-[var(--primary-active)]"
+          />
+          <MetricCard
+            label="Pending installations"
+            value={loading ? '…' : formatNumber(pendingInstallations)}
+            icon={Wrench}
+            tone="text-[var(--primary)]"
+            chip="bg-[var(--primary-tint)] text-[var(--primary-active)]"
+          />
+          <MetricCard
+            label="Stock value"
+            value={loading ? '…' : summary ? `₹${formatNumber(summary.totalStockValue)}` : '₹0'}
+            icon={TrendingUp}
+            tone="text-[var(--foreground)]"
+            chip="bg-[var(--success-tint)] text-[var(--success)]"
+          />
+          <MetricCard
+            label="Low stock items"
+            value={loading ? '…' : formatNumber(summary?.lowStockCount ?? 0)}
+            icon={AlertTriangle}
+            tone="text-[var(--error)]"
+            chip="bg-[var(--error-tint)] text-[var(--error)]"
+          />
         </div>
 
-        {/* Main Content */}
-        <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-          {/* Left Column */}
-          <div className="space-y-6">
-            {/* Recent Installations */}
-            <div className="surface-card overflow-hidden p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--foreground)]">Recent installations</h2>
-                  <p className="mt-2 text-sm text-[var(--muted)]">Latest field updates and schedule status.</p>
+        {/* Main content */}
+        <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr] xl:gap-5">
+          {/* Left column */}
+          <div className="min-w-0 space-y-4 xl:space-y-5">
+            {/* Recent installations */}
+            <section className="panel overflow-hidden p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-[var(--foreground)]">Recent installations</h2>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {loading
+                      ? 'Loading latest field updates…'
+                      : `${completedInstallations} completed • ${pendingPurchases} purchase request${pendingPurchases === 1 ? '' : 's'} open`}
+                  </p>
                 </div>
-                <Link href="/installations" className="neutral-button">
+                <Link href="/installations" className="neutral-button px-4 py-2">
                   View all
                 </Link>
               </div>
 
-              <div className="mt-6 overflow-x-auto">
+              <div className="mt-4 overflow-x-auto">
                 {loading ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="skeleton h-16 w-full rounded-[1.25rem]" />
+                      <div key={i} className="skeleton h-12 w-full rounded-[1rem]" />
                     ))}
                   </div>
                 ) : recentInstallations.length === 0 ? (
-                  <div className="py-12 text-center text-[var(--muted)]">
-                    <Wrench className="mx-auto h-12 w-12 opacity-40" />
-                    <p className="mt-3">No installations yet</p>
+                  <div className="py-10 text-center text-[var(--muted)]">
+                    <Wrench className="mx-auto h-9 w-9 opacity-40" />
+                    <p className="mt-2 text-sm">No installations yet</p>
                   </div>
                 ) : (
-                  <table className="min-w-full border-separate border-spacing-y-3 text-left text-sm">
+                  <table className="w-full border-separate border-spacing-y-2 text-left text-sm">
                     <tbody>
                       {recentInstallations.map((row) => (
-                        <tr key={row._id} className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)]">
-                          <td className="px-5 py-4 font-semibold text-[var(--foreground)]">
-                              {row.customerNameSnapshot || 'Installation'}
+                        <tr key={row._id} className="rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface)]">
+                          <td className="max-w-[7.5rem] px-3 py-3 font-semibold text-[var(--foreground)] sm:max-w-[13rem]">
+                            <span className="block truncate">{row.customerNameSnapshot || 'Installation'}</span>
                           </td>
-                          <td className="px-5 py-4 text-[var(--muted)]">
+                          {/* Phone and date are hidden on phones so the row fits
+                              without horizontal scrolling; the full row is on
+                              the installations page. */}
+                          <td className="hidden whitespace-nowrap px-3 py-3 tabular-nums text-[var(--muted)] sm:table-cell">
                             {row.customerPhoneSnapshot || '—'}
                           </td>
-                          <td className="px-5 py-4 text-[var(--muted)]">
+                          <td className="hidden whitespace-nowrap px-3 py-3 text-[var(--muted)] sm:table-cell">
                             {row.installDate ? new Date(row.installDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-3 py-3">
                             {(() => {
                               const s = installationStatusStyle(row.status);
                               return <span className={`badge-pill ${s.className}`}>{s.label}</span>;
@@ -240,132 +286,149 @@ export default function DashboardPage() {
                   </table>
                 )}
               </div>
-            </div>
+            </section>
 
-            {/* PM Surya Ghar Scheme Info */}
-            <div className="surface-card overflow-hidden p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="relative h-12 w-12 overflow-hidden rounded-full">
-                  <img
-                    src="/sulekha_engineering_logo.jpeg"
-                    alt="PM Surya Ghar"
-                    className="h-full w-full object-contain"
-                    width={48}
-                    height={48}
-                  />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--foreground)]">PM Surya Ghar Muft Bijli Yojana</h2>
-                  <p className="text-sm text-[var(--muted)]">Government of India Initiative</p>
+            {/* PM Surya Ghar scheme info */}
+            <section className="panel overflow-hidden p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <img
+                  src="/sulekha_engineering_logo.jpeg"
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full object-contain"
+                  width={36}
+                  height={36}
+                />
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-[var(--foreground)]">PM Surya Ghar Muft Bijli Yojana</h2>
+                  <p className="text-xs text-[var(--muted)]">Government of India initiative</p>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+              {/* Two columns on a phone, four once there is room. Values wrap
+                  inside their box rather than stretching it. */}
+              <div className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                 {SCHEME_STATS.map((stat) => (
-                  <div key={stat.label} className="rounded-[1.5rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4 text-center">
-                    <p className="text-2xl font-semibold text-[var(--primary-active)]">{stat.value}</p>
-                    <p className="mt-1 text-xs text-[var(--muted)]">{stat.label}</p>
+                  <div
+                    key={stat.label}
+                    className="min-w-0 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-3"
+                  >
+                    {/* Label first: it is always one line, so the labels stay
+                        aligned across the row. A value that wraps to two lines
+                        then simply extends downwards. */}
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--muted)]">{stat.label}</p>
+                    <p className="mt-1 text-lg font-semibold leading-snug text-[var(--primary-active)] [overflow-wrap:anywhere]">
+                      {stat.value}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              <div className="rounded-[1.5rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
-                <h3 className="font-semibold text-[var(--foreground)]">About the Scheme</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+              <div className="rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">About the scheme</h3>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
                   PM Surya Ghar Muft Bijli Yojana aims to provide free electricity up to 300 units per month
                   to households through rooftop solar installations. Under this scheme, beneficiaries receive
                   central financial assistance of up to 60% for systems up to 6 kW capacity. The scheme also
                   enables solar panel manufacturing, creates jobs, and promotes clean energy adoption across India.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="badge-pill bg-[var(--primary-tint)] text-[var(--primary-active)]">Rooftop Solar</span>
-                  <span className="badge-pill bg-[var(--success-tint)] text-[var(--success)]">Free Electricity</span>
-                  <span className="badge-pill bg-[var(--primary-tint)] text-[var(--primary-active)]">60% Subsidy</span>
-                  <span className="badge-pill bg-[var(--success-tint)] text-[var(--success)]">Clean Energy</span>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {SCHEME_HIGHLIGHTS.map((tag) => (
+                    <span key={tag.label} className={`badge-pill ${tag.tone}`}>
+                      {tag.label}
+                    </span>
+                  ))}
                 </div>
               </div>
-            </div>
+            </section>
           </div>
 
-          {/* Right Column */}
-          <aside className="space-y-6">
-            {/* Stock Alerts */}
-            <div className="surface-card p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <PackageX className="h-5 w-5 text-[var(--error)]" />
-                <h2 className="text-xl font-semibold text-[var(--foreground)]">Stock alerts</h2>
+          {/* Right column */}
+          <aside className="min-w-0 space-y-4 xl:space-y-5">
+            {/* Stock alerts */}
+            <section className="panel p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <PackageX className="h-4 w-4 shrink-0 text-[var(--error)]" />
+                <h2 className="text-base font-semibold text-[var(--foreground)]">Stock alerts</h2>
               </div>
-              <p className="mt-2 text-sm text-[var(--muted)]">Prioritize procurement for the next installation cycle.</p>
-              <div className="mt-5 space-y-3">
+              <p className="mt-1 text-xs text-[var(--muted)]">Prioritize procurement for the next installation cycle.</p>
+
+              <div className="mt-4 space-y-2">
                 {loading ? (
                   [1, 2, 3].map(i => (
-                    <div key={i} className="skeleton h-16 w-full rounded-[1.5rem]" />
+                    <div key={i} className="skeleton h-12 w-full rounded-[1rem]" />
                   ))
                 ) : lowStock.length === 0 ? (
-                  <p className="text-sm text-[var(--muted)]">All materials are adequately stocked.</p>
+                  <p className="text-xs text-[var(--muted)]">All materials are adequately stocked.</p>
                 ) : (
                   lowStock.map((item) => (
-                    <div key={item._id} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
-                          <p className="mt-1 text-sm text-[var(--muted)]">
-                            {item.currentStock} / {item.minimumStockLevel} {item.unit}
-                          </p>
-                        </div>
-                        <span className="badge-pill bg-[rgba(183,43,40,0.12)] text-[var(--error)]">
-                          Low
-                        </span>
+                    <div
+                      key={item._id}
+                      className="flex items-center justify-between gap-3 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
+                        <p className="mt-0.5 text-xs tabular-nums text-[var(--muted)]">
+                          {item.currentStock} / {item.minimumStockLevel} {item.unit}
+                        </p>
                       </div>
+                      <span className="badge-pill shrink-0 bg-[rgba(183,43,40,0.12)] text-[var(--error)]">Low</span>
                     </div>
                   ))
                 )}
               </div>
-              <Link href="/materials?lowStock=true" className="mt-4 block text-center text-sm font-medium text-[var(--primary-active)] hover:underline">
+
+              <Link
+                href="/materials?lowStock=true"
+                className="mt-3 block text-center text-xs font-semibold text-[var(--primary-active)] hover:underline"
+              >
                 View all low stock items
               </Link>
-            </div>
+            </section>
 
-            {/* News & Updates */}
-            <div className="surface-card p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Bell className="h-5 w-5 text-[var(--primary)]" />
-                <h2 className="text-xl font-semibold text-[var(--foreground)]">PM Surya Ghar Updates</h2>
+            {/* News & updates */}
+            <section className="panel p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 shrink-0 text-[var(--primary)]" />
+                <h2 className="text-base font-semibold text-[var(--foreground)]">PM Surya Ghar updates</h2>
               </div>
-              <div className="space-y-4">
+              <div className="mt-4 space-y-2.5">
                 {PM_SURYAAHAR_NEWS.map((news) => (
-                  <div key={news.id} className="rounded-[1.5rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[var(--foreground)]">{news.title}</p>
-                        <p className="mt-1 text-xs text-[var(--muted-soft)]">{news.summary}</p>
-                        <p className="mt-2 text-xs text-[var(--muted-soft)]">
-                          {news.source} • {new Date(news.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <article
+                    key={news.id}
+                    className="min-w-0 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3"
+                  >
+                    <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{news.title}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">{news.summary}</p>
+                    <p className="mt-1.5 text-[11px] text-[var(--muted-soft)]">
+                      {news.source} • {new Date(news.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </article>
                 ))}
               </div>
-            </div>
+            </section>
 
-            {/* Quick Actions */}
-            <div className="surface-card p-6">
-              <h2 className="text-xl font-semibold text-[var(--foreground)]">Quick actions</h2>
-              <div className="mt-5 grid gap-3">
-                <Link href="/customers" className="neutral-button w-full text-center">
-                  Review customers
+            {/* Quick actions */}
+            <section className="panel p-4 sm:p-5">
+              <h2 className="text-base font-semibold text-[var(--foreground)]">Quick actions</h2>
+              <div className="mt-3 grid gap-2">
+                <Link href="/quotations" className="neutral-button w-full px-4 py-2.5 text-center">
+                  Create a quotation
                 </Link>
-                <Link href="/installations" className="neutral-button w-full text-center">
+                <Link href="/installations" className="neutral-button w-full px-4 py-2.5 text-center">
                   View installations
                 </Link>
-                <Link href="/materials" className="neutral-button w-full text-center">
+                <Link href="/materials" className="neutral-button w-full px-4 py-2.5 text-center">
                   Manage stock
                 </Link>
               </div>
-            </div>
+            </section>
           </aside>
         </div>
+
+        <footer className="flex flex-col gap-1 px-1 pb-2 text-[11px] text-[var(--muted-soft)] sm:flex-row sm:items-center sm:justify-between">
+          <p>Sulekha Engineering • PM Surya Ghar registered vendor • +91 98321 17393</p>
+          <p>Figures shown are for the current cycle.</p>
+        </footer>
       </div>
     </main>
   );
@@ -377,4 +440,3 @@ function formatNumber(value: number | string | undefined): string {
   if (Number.isNaN(numeric)) return '0';
   return new Intl.NumberFormat('en-IN').format(numeric);
 }
-

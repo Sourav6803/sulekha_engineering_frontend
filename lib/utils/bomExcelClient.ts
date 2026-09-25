@@ -1,5 +1,66 @@
 import ExcelJS from 'exceljs';
 
+/** Column widths in Excel character units, columns A..G. */
+const COLUMN_WIDTHS = [24, 6, 28, 26, 8, 10, 20];
+
+/** Header row heights in points: rows 1 and 2 sit above the black BOM band. */
+const HEADER_ROW_HEIGHTS_PT = [24, 14];
+
+/** One character unit is 5.4pt wide on the default 11pt Calibri grid. */
+const CHAR_UNIT_PT = 5.4;
+
+/** Image anchors are written as EMU, and one point is 12700 EMU. */
+const EMU_PER_PT = 12700;
+
+const columnWidthPt = (width: number) => width * CHAR_UNIT_PT;
+
+/** The table's own width - the logo must never reach past column G. */
+const TABLE_WIDTH_PT = COLUMN_WIDTHS.reduce((sum, width) => sum + columnWidthPt(width), 0);
+
+const HEADER_HEIGHT_PT = HEADER_ROW_HEIGHTS_PT.reduce((sum, height) => sum + height, 0);
+
+/**
+ * The source image is a 1024x1024 square, so the box stays square - the old
+ * 70x50 box squashed it. Sized to the header so it always clears the black
+ * "BOM LIST" band on row 3.
+ */
+const LOGO_SIZE_PT = HEADER_HEIGHT_PT - 2;
+const LOGO_SIZE_PX = Math.round(LOGO_SIZE_PT / 0.75);
+
+/**
+ * Anchor for the logo: flush with the table's right edge, inside the header.
+ *
+ * The old anchor used column H, which begins past the table's right border, so
+ * the whole logo printed outside the sheet. The offset is given in EMU because
+ * ExcelJS writes `nativeColOff` straight into the drawing XML - its fractional
+ * `tl.col` is never converted, so `col: 6.75` landed a few pixels into column G
+ * instead of at the far edge.
+ */
+export const logoAnchor = (() => {
+  const targetLeft = TABLE_WIDTH_PT - LOGO_SIZE_PT;
+  let left = 0;
+
+  for (let index = 0; index < COLUMN_WIDTHS.length; index += 1) {
+    const width = columnWidthPt(COLUMN_WIDTHS[index]);
+    if (left + width > targetLeft) {
+      return {
+        nativeCol: index,
+        nativeColOff: Math.round((targetLeft - left) * EMU_PER_PT),
+        nativeRow: 0,
+        nativeRowOff: 0,
+      };
+    }
+    left += width;
+  }
+
+  return {
+    nativeCol: COLUMN_WIDTHS.length - 1,
+    nativeColOff: 0,
+    nativeRow: 0,
+    nativeRowOff: 0,
+  };
+})();
+
 export interface BOMRowClient {
   serial: number;
   section: string;
@@ -34,15 +95,7 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
     fitToWidth: 1,
   };
 
-  ws.columns = [
-    { width: 24 },
-    { width: 6 },
-    { width: 28 },
-    { width: 26 },
-    { width: 8 },
-    { width: 10 },
-    { width: 20 },
-  ];
+  ws.columns = COLUMN_WIDTHS.map((width) => ({ width }));
 
   const blackFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } } as ExcelJS.Fill;
   const whiteFont = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font;
@@ -69,14 +122,14 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
   titleCell.value = 'SULEKHA ENGINEERING';
   titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FF000000' } } as ExcelJS.Font;
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' } as ExcelJS.Alignment;
-  ws.getRow(1).height = 24;
+  ws.getRow(1).height = HEADER_ROW_HEIGHTS_PT[0];
 
   ws.mergeCells('A2:G2');
   const subCell = ws.getCell('A2');
   subCell.value = 'PM Surya Ghar Registered Vendor  •  Solar Power Plant  •  Ph: 9832117393';
   subCell.font = { name: 'Calibri', size: 9, bold: false, color: { argb: 'FF000000' } } as ExcelJS.Font;
   subCell.alignment = { horizontal: 'center', vertical: 'middle' } as ExcelJS.Alignment;
-  ws.getRow(2).height = 14;
+  ws.getRow(2).height = HEADER_ROW_HEIGHTS_PT[1];
 
   ws.mergeCells('A3:G3');
   const bomTitle = ws.getCell('A3');
@@ -86,19 +139,22 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
   bomTitle.fill = blackFill;
   ws.getRow(3).height = 18;
 
-  ws.mergeCells('H1:H3');
-  const logoPlaceholder = ws.getCell('H1');
-  logoPlaceholder.value = '';
-  logoPlaceholder.alignment = { horizontal: 'right', vertical: 'middle', wrapText: false, shrinkToFit: false, indent: 0, readingOrder: 0, textRotation: 0 } as unknown as ExcelJS.Alignment;
-
+  // No placeholder column to the right of the table: leaving column H in the
+  // sheet stretched the used range to A1:H74, which pulled the page scaling off
+  // and pushed the logo off the paper.
   try {
     const logoResponse = await fetch('/sulekha_engineering_logo.jpeg');
     if (logoResponse.ok) {
       const logoBuffer = await logoResponse.arrayBuffer();
       const logoUint8 = new Uint8Array(logoBuffer);
-      // @ts-ignore exceljs browser Buffer type mismatch
+      // @ts-expect-error exceljs browser Buffer type mismatch
       const logoId = wb.addImage({ buffer: Buffer.from(logoUint8), extension: 'jpeg' });
-      ws.addImage(logoId, { tl: { col: 7, row: 0 }, ext: { width: 70, height: 50 } });
+      ws.addImage(logoId, {
+        // EMU-based anchor: ExcelJS's own anchor type only models {col, row},
+        // but the writer serialises nativeColOff as-is.
+        tl: logoAnchor as unknown as ExcelJS.Anchor,
+        ext: { width: LOGO_SIZE_PX, height: LOGO_SIZE_PX },
+      });
     }
   } catch {
     // logo not available

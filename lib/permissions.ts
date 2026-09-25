@@ -51,3 +51,31 @@ const SUPPLIER_VIEWER_ROLES: AuthRole[] = ['admin', 'manager', 'warehouse_staff'
 export const canManageSuppliers = (role?: AuthRole): boolean => (role ? SUPPLIER_EDITOR_ROLES.includes(role) : false);
 export const canViewSuppliers = (role?: AuthRole): boolean => (role ? SUPPLIER_VIEWER_ROLES.includes(role) : false);
 export const canDeleteSupplier = (role?: AuthRole): boolean => (role === 'admin');
+
+/**
+ * Quotation gates mirroring backend/src/routes/quotation.routes.js:
+ * create/update/status/attachments require admin or manager, delete and the
+ * register back-fill are admin only, and every signed in user may read and print.
+ *
+ * Note: `administration` (which appears in the role arrays above) is not a value
+ * the backend User model accepts, so it is deliberately not listed here.
+ */
+const QUOTATION_EDITOR_ROLES: AuthRole[] = ['admin', 'manager'];
+
+export const canViewQuotations = (role?: AuthRole): boolean =>
+  role ? ['admin', 'manager', 'warehouse_staff', 'installation_team', 'viewer'].includes(role) : false;
+export const canManageQuotations = (role?: AuthRole): boolean => (role ? QUOTATION_EDITOR_ROLES.includes(role) : false);
+export const canDeleteQuotation = (role?: AuthRole): boolean => (role === 'admin');
+export const canImportQuotations = (role?: AuthRole): boolean => (role === 'admin');
+
+/**
+ * Agreement gates mirroring backend/src/routes/agreement.routes.js:
+ * create/update and the document are admin or manager, delete is admin only.
+ */
+const AGREEMENT_EDITOR_ROLES: AuthRole[] = ['admin', 'manager'];
+
+export const canManageAgreements = (role?: AuthRole): boolean =>
+  role ? AGREEMENT_EDITOR_ROLES.includes(role) : false;
+export const canDeleteAgreement = (role?: AuthRole): boolean => (role === 'admin');
+/** The PDF download is admin/manager; printing is open to every signed in user. */
+export const canDownloadQuotationPdf = (role?: AuthRole): boolean => (role ? QUOTATION_EDITOR_ROLES.includes(role) : false);

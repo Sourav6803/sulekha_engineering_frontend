@@ -144,7 +144,7 @@ export default function LoginPage() {
                     className="h-full w-full object-contain p-1"
                   /> */}
 
-                  <img
+                  <Image
                     src="/sulekha_engineering_logo.jpeg"
                     alt="Sulekha Engineering"
                     className="h-full w-full object-contain"
@@ -153,7 +153,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-white">Sulekha Engineering dd</p>
+                  <p className="text-lg font-semibold text-white">Sulekha Engineering</p>
                   <p className="text-xs text-white/70">PM Surya Ghar Vendor</p>
                 </div>
               </div>

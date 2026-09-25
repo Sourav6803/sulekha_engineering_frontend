@@ -13,21 +13,59 @@ import {
   Bell,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  FileText,
+  FileSignature,
+  ListOrdered,
   X,
   Sun,
 } from "lucide-react";
 import { useSidebarStore } from "@/store/useSidebarStore";
+import { useUIStore } from "@/store/useUIStore";
 // import { BrandMark } from "./Brandmark";
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+type NavGroup = {
+  key: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  children: NavItem[];
+};
+
+type NavEntry = NavItem | NavGroup;
+
+const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
+
+/**
+ * Quotation sits in its own group with two entries, both reading the same
+ * records: the quotation sheet and the SL number register.
+ */
+const NAV_ENTRIES: NavEntry[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/materials", label: "Materials", icon: Package },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/installations", label: "Installations", icon: Wrench },
+  {
+    key: "quotation",
+    label: "Quotation",
+    icon: FileText,
+    children: [
+      { href: "/quotations", label: "Quotations", icon: FileText },
+      { href: "/quotations/serial", label: "Quotation SL Number", icon: ListOrdered },
+    ],
+  },
+  // The consumer agreement (4 page PM Surya Ghar document) has its own menu:
+  // it can be raised for a consumer whose quotation is not in the system.
+  { href: "/agreements", label: "Agreements", icon: FileSignature },
   { href: "/bom-templates", label: "BOM Templates", icon: ClipboardList },
   { href: "/notifications", label: "Notifications", icon: Bell },
-] as const;
+];
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -35,10 +73,37 @@ export default function Sidebar() {
   const closeMobile = useSidebarStore((state) => state.closeMobile);
   const isCollapsed = useSidebarStore((state) => state.isCollapsed);
   const toggleCollapsed = useSidebarStore((state) => state.toggleCollapsed);
+  const expandedNavGroups = useUIStore((state) => state.expandedNavGroups);
+  const toggleNavGroup = useUIStore((state) => state.toggleNavGroup);
 
   useEffect(() => {
     closeMobile();
   }, [pathname, closeMobile]);
+
+  /**
+   * The most specific matching route wins, so "/quotations/serial" does not
+   * light up "/quotations" as well.
+   */
+  const isRouteActive = (href: string, siblings: NavItem[] = []) => {
+    if (pathname === href) return true;
+    if (!pathname?.startsWith(`${href}/`)) return false;
+
+    return !siblings.some(
+      (sibling) =>
+        sibling.href !== href &&
+        sibling.href.length > href.length &&
+        (pathname === sibling.href || pathname.startsWith(`${sibling.href}/`))
+    );
+  };
+
+  const itemClasses = (active: boolean) =>
+    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
+      ${
+        active
+          ? "bg-[var(--sidebar-active)] text-[var(--sidebar-text-active)]"
+          : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-white"
+      }
+      ${isCollapsed ? "lg:justify-center" : ""}`;
 
   return (
     <>
@@ -84,29 +149,83 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+          {NAV_ENTRIES.map((entry) => {
+            if (!isGroup(entry)) {
+              const active = isRouteActive(entry.href);
+              return (
+                <Link
+                  key={entry.href}
+                  href={entry.href}
+                  title={isCollapsed ? entry.label : undefined}
+                  className={itemClasses(active)}
+                >
+                  <entry.icon className="h-5 w-5 shrink-0" />
+                  <span className={`truncate transition-opacity duration-200 ${isCollapsed ? "lg:hidden" : ""}`}>
+                    {entry.label}
+                  </span>
+                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
+                </Link>
+              );
+            }
+
+            const childActive = entry.children.some((child) => isRouteActive(child.href, entry.children));
+            const expanded = Boolean(expandedNavGroups[entry.key]) || childActive;
+
+            // Collapsed sidebar: show the children as icons so both entries stay reachable.
+            if (isCollapsed) {
+              return (
+                <div key={entry.key} className="space-y-1">
+                  {entry.children.map((child) => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      title={child.label}
+                      className={itemClasses(isRouteActive(child.href, entry.children))}
+                    >
+                      <child.icon className="h-5 w-5 shrink-0" />
+                      <span className="truncate lg:hidden">{child.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              );
+            }
+
             return (
-              <Link
-                key={href}
-                href={href}
-                title={isCollapsed ? label : undefined}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
-                  ${
-                    isActive
-                      ? "bg-[var(--sidebar-active)] text-[var(--sidebar-text-active)]"
-                      : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-white"
-                  }
-                  ${isCollapsed ? "lg:justify-center" : ""}`}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className={`truncate transition-opacity duration-200 ${isCollapsed ? "lg:hidden" : ""}`}>
-                  {label}
-                </span>
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+              <div key={entry.key} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleNavGroup(entry.key)}
+                  aria-expanded={expanded}
+                  className={`w-full ${itemClasses(childActive)}`}
+                >
+                  <entry.icon className="h-5 w-5 shrink-0" />
+                  <span className="truncate">{entry.label}</span>
+                  <ChevronDown
+                    className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${
+                      expanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {expanded && (
+                  <div className="space-y-1 border-l border-[var(--sidebar-border)] pl-3">
+                    {entry.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200 ${
+                          isRouteActive(child.href, entry.children)
+                            ? "bg-[var(--sidebar-active)] text-[var(--sidebar-text-active)]"
+                            : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-white"
+                        }`}
+                      >
+                        <child.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{child.label}</span>
+                      </Link>
+                    ))}
+                  </div>
                 )}
-              </Link>
+              </div>
             );
           })}
         </nav>

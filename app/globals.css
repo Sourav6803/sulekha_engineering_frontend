@@ -98,6 +98,11 @@
   --shadow-sm: 0 4px 12px rgba(76, 45, 11, 0.08);
   --shadow: 0 20px 60px rgba(76, 45, 11, 0.14);
   --shadow-lg: 0 30px 80px rgba(76, 45, 11, 0.18);
+  /* Light, wide elevation for dense content panels. --shadow is a hero
+     shadow (20px/60px blur) and reads as heavy when every card on a
+     dashboard carries it. */
+  --shadow-card: 0 1px 2px rgba(76, 45, 11, 0.04), 0 6px 20px -10px rgba(76, 45, 11, 0.16);
+  --shadow-card-hover: 0 2px 4px rgba(76, 45, 11, 0.05), 0 14px 32px -14px rgba(76, 45, 11, 0.22);
   --shadow-glow: 0 0 0 1px rgba(234, 138, 59, 0.12), 0 8px 24px rgba(234, 138, 59, 0.22);
 
   /* ---- Radius ---- */
@@ -112,14 +117,21 @@
   --duration-fast: 150ms;
   --duration: 220ms;
 
-  /* ---- Type scale (fluid — clamp between mobile and desktop) ---- */
+  /* ---- Type scale (fluid, but tightly bounded) ----
+     Each step is allowed to breathe with the viewport but is capped at
+     Tailwind's nominal size for that step. The previous scale grew far past
+     it — --text-3xl topped out at 3.25rem (52px) and --text-2xl at 2.25rem
+     (36px) — so on a 1920px display every text-3xl KPI figure and every
+     text-2xl stat box rendered ~70% wider than the card was built for and
+     spilled out of it. Capping the max keeps dense UI predictable while the
+     min still shrinks gracefully on phones. */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
-  --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
-  --text-xl: clamp(1.375rem, 1.25rem + 0.6vw, 1.625rem);
-  --text-2xl: clamp(1.75rem, 1.5rem + 1.1vw, 2.25rem);
-  --text-3xl: clamp(2.25rem, 1.85rem + 1.8vw, 3.25rem);
+  --text-lg: clamp(1.0625rem, 1.02rem + 0.2vw, 1.125rem);
+  --text-xl: clamp(1.125rem, 1.08rem + 0.25vw, 1.25rem);
+  --text-2xl: clamp(1.375rem, 1.3rem + 0.4vw, 1.5rem);
+  --text-3xl: clamp(1.625rem, 1.48rem + 0.7vw, 1.875rem);
   --tracking-tight: -0.02em;
   --tracking-wide: 0.08em;
   --tracking-widest: 0.22em;
@@ -217,6 +229,23 @@
 @layer components {
   .surface-card {
     @apply rounded-[var(--radius)] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow)];
+  }
+
+  /* Dense content panel — the everyday card on data-heavy screens
+     (dashboards, summary rows). Lighter radius and elevation than
+     .surface-card so a screen full of them stays calm. */
+  .panel {
+    @apply rounded-[1.25rem] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)];
+  }
+
+  /* Soft layered canvas behind dashboard pages: a warm sunrise wash plus a
+     faint cool counter-light. Gives the white panels something to lift off
+     instead of sitting on a flat cream field. */
+  .canvas-warm {
+    background:
+      radial-gradient(1100px 520px at 6% -12%, rgba(234, 138, 59, 0.14), transparent 62%),
+      radial-gradient(880px 460px at 102% -6%, rgba(30, 122, 66, 0.09), transparent 58%),
+      linear-gradient(180deg, #fffdf8 0%, #fef9f0 44%, #fbf1e2 100%);
   }
 
   .surface-glass {

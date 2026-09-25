@@ -67,5 +67,34 @@ export const ENDPOINTS = {
     byId: (id: string) => `/bom-templates/${id}`,
     bulk: '/bom-templates/bulk'
   },
+  quotations: {
+    root: '/quotations',
+    /** next number the next save will receive (read-only preview) */
+    nextNumber: '/quotations/next-number',
+    /** Quotation SL Number register - mirrors the old Excel sheet */
+    register: '/quotations/register',
+    /** fixed terms / payment terms and the form defaults (read only) */
+    defaults: '/quotations/defaults',
+    stats: '/quotations/stats',
+    byId: (id: string) => `/quotations/${id}`,
+    status: (id: string) => `/quotations/${id}/status`,
+    restore: (id: string) => `/quotations/${id}/restore`,
+    pdf: (id: string) => `/quotations/${id}/pdf`,
+    print: (id: string) => `/quotations/${id}/print`,
+    attachments: (id: string) => `/quotations/${id}/attachments`,
+    attachment: (id: string, attachmentId: string) => `/quotations/${id}/attachments/${attachmentId}`,
+    importRegister: '/quotations/import/register',
+    importAttachments: '/quotations/import/attachments',
+    importConfirm: '/quotations/import/confirm'
+  },
+  agreements: {
+    root: '/agreements',
+    /** discom, registered office and the fixed 50/40/10 wording */
+    defaults: '/agreements/defaults',
+    byId: (id: string) => `/agreements/${id}`,
+    /** the four page document */
+    pdf: (id: string) => `/agreements/${id}/pdf`,
+    print: (id: string) => `/agreements/${id}/print`
+  },
   health: '/health'
 };
