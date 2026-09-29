@@ -1,5 +1,10 @@
 import type { ApiResponse } from '@/types/api';
-import type { AuthLoginPayload, AuthLoginResponse, AuthUser } from '@/types/auth';
+import type {
+  AuthChangePasswordPayload,
+  AuthLoginPayload,
+  AuthLoginResponse,
+  AuthUser,
+} from '@/types/auth';
 import axiosClient from './axiosClient';
 import { ENDPOINTS } from './endpoints';
 
@@ -7,6 +12,15 @@ export const authApi = {
   login: (payload: AuthLoginPayload) =>
     axiosClient
       .post<ApiResponse<AuthLoginResponse>>(ENDPOINTS.auth.login, payload)
+      .then((response) => response.data),
+
+  /**
+   * Set a password of your own. The server clears `mustChangePassword` when it
+   * succeeds, so the stored user has to be updated client side too.
+   */
+  changePassword: (payload: AuthChangePasswordPayload) =>
+    axiosClient
+      .post<ApiResponse<null>>(ENDPOINTS.auth.changePassword, payload)
       .then((response) => response.data),
 
   getProfile: () =>

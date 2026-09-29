@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Bell, PackageX, Wrench, Truck } from "lucide-react";
+import { Bell, PackageX, Wrench, Truck, FileText, ClipboardList } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { UnifiedNotification } from "@/types/notification";
@@ -14,6 +14,11 @@ const ICONS: Record<string, typeof PackageX> = {
   scheme: Bell,
   external: Bell,
   system: Bell,
+  // The office filed the consumer's signed quotation / agreement — the one
+  // notification here that is addressed to a single agent.
+  document: FileText,
+  // A field agent has filed an application, and the office has to pick it up.
+  application: ClipboardList,
 };
 
 const ICON_STYLES: Record<string, string> = {
@@ -23,6 +28,8 @@ const ICON_STYLES: Record<string, string> = {
   scheme: "bg-[var(--success-tint)] text-[var(--success)]",
   external: "bg-[var(--surface-muted)] text-[var(--secondary)]",
   system: "bg-[var(--primary-tint)] text-[var(--primary-active)]",
+  document: "bg-[var(--success-tint)] text-[var(--success)]",
+  application: "bg-[var(--primary-tint)] text-[var(--primary-active)]",
 };
 
 export function NotificationBell() {
@@ -97,13 +104,15 @@ export function NotificationBell() {
               recentNotifications.map((item: UnifiedNotification) => {
                 const Icon = ICONS[item.type] ?? Bell;
                 const iconStyle = ICON_STYLES[item.type] ?? ICON_STYLES.system;
-                return (
-                  <div
-                    key={item._id}
-                    className={`flex gap-3 border-b border-[var(--border-soft)] px-4 py-3 last:border-0 ${
-                      !item.isRead ? "bg-[var(--surface-muted)]/30" : ""
-                    }`}
-                  >
+                // A notification that points at a screen in this app opens it;
+                // only the external scheme items link away.
+                const inApp = item.link?.startsWith('/') ?? false;
+
+                const rowClass = `flex gap-3 border-b border-[var(--border-soft)] px-4 py-3 last:border-0 ${
+                  !item.isRead ? "bg-[var(--surface-muted)]/30" : ""
+                }`;
+                const content = (
+                  <>
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${iconStyle}`}>
                       <Icon className="h-4 w-4" />
                     </span>
@@ -117,6 +126,21 @@ export function NotificationBell() {
                     {!item.isRead && (
                       <span className="ml-auto mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
                     )}
+                  </>
+                );
+
+                return inApp ? (
+                  <Link
+                    key={item._id}
+                    href={item.link as string}
+                    onClick={() => setOpen(false)}
+                    className={`${rowClass} transition-colors hover:bg-[var(--surface-muted)]`}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={item._id} className={rowClass}>
+                    {content}
                   </div>
                 );
               })

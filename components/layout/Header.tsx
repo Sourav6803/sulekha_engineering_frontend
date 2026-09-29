@@ -53,7 +53,7 @@ export default function Header() {
     : "SE";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--header-border)] bg-[var(--header-bg)] shadow-[var(--header-shadow)]">
+    <header className="header-surface sticky top-0 z-40 border-b border-[var(--header-border)] shadow-[var(--header-shadow)]">
       <div className="relative flex h-16 items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Mobile-only hamburger */}

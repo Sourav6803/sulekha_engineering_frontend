@@ -75,8 +75,8 @@ export function BOMTemplateTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-[var(--border-soft)] text-[var(--muted)]">
+        <thead className="table-head">
+          <tr className="text-[var(--muted)]">
             <th className="pb-3 pl-4 pr-3">
               <button type="button" className="flex items-center font-medium" onClick={() => handleSort('templateName')}>
                 Name <SortIcon column="templateName" />

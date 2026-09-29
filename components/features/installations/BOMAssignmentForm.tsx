@@ -123,8 +123,8 @@ export function BOMAssignmentForm({ sections, submitting = false, onSubmit }: BO
       <div className="overflow-hidden rounded-2xl border border-[var(--border)]">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-soft)] bg-[var(--surface-muted)] text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+            <thead className="table-head">
+              <tr className="text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
                 <th className="px-5 py-3 font-semibold">Material</th>
                 <th className="hidden px-3 py-3 font-semibold md:table-cell">Code</th>
                 <th className="hidden px-3 py-3 font-semibold sm:table-cell">UOM</th>

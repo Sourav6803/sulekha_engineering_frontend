@@ -97,7 +97,9 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
 
   ws.columns = COLUMN_WIDTHS.map((width) => ({ width }));
 
-  const blackFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } } as ExcelJS.Fill;
+  // Brand leaf green (--primary) instead of black — the downloadable BOM is a
+  // customer-facing deliverable, so its bands carry the same colour as the app.
+  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0B7A3D' } } as ExcelJS.Fill;
   const whiteFont = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font;
   const headerFont = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font;
   const bodyFont = { name: 'Calibri', size: 9, bold: false, color: { argb: 'FF000000' } } as ExcelJS.Font;
@@ -136,7 +138,7 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
   bomTitle.value = 'SULEKHA ENGINEERING  —  BOM LIST';
   bomTitle.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font;
   bomTitle.alignment = { horizontal: 'center', vertical: 'middle' } as ExcelJS.Alignment;
-  bomTitle.fill = blackFill;
+  bomTitle.fill = headerFill;
   ws.getRow(3).height = 18;
 
   // No placeholder column to the right of the table: leaving column H in the
@@ -217,7 +219,7 @@ export async function generateBOMExcelClient(rows: BOMRowClient[], jobInfo: JobI
     cell.value = header;
     cell.font = headerFont;
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as ExcelJS.Alignment;
-    cell.fill = blackFill;
+    cell.fill = headerFill;
     cell.border = mediumBorder;
   });
 

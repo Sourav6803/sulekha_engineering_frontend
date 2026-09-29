@@ -13,6 +13,7 @@ import type {
   QuotationImportRow,
   QuotationListQuery,
   QuotationNextNumber,
+  QuotationNumberCheck,
   QuotationPayload,
   QuotationRegisterQuery,
   QuotationRegisterRow,
@@ -66,6 +67,18 @@ export const quotationsApi = {
     const { data } = await axiosClient.get<ApiResponse<QuotationNextNumber>>(ENDPOINTS.quotations.nextNumber, {
       params,
     });
+    return data;
+  },
+
+  /**
+   * Is a hand-typed number still free? Read-only — nothing is reserved, so the
+   * save itself can still lose the race (the create answers 409 when it does).
+   */
+  async checkNumber(params: { quotationNo: string; issueDate?: string }) {
+    const { data } = await axiosClient.get<ApiResponse<QuotationNumberCheck>>(
+      ENDPOINTS.quotations.checkNumber,
+      { params }
+    );
     return data;
   },
 

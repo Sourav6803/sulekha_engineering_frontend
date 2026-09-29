@@ -13,7 +13,7 @@ interface ModalProps {
   eyebrow?: string;
   children: ReactNode;
   /** Max width utility class. Defaults to a comfortable form/modal width. */
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Optional footer rendered below children (typically the action buttons). */
   footer?: ReactNode;
 }
@@ -22,6 +22,8 @@ const SIZE_CLASSES: Record<NonNullable<ModalProps['size']>, string> = {
   sm: 'max-w-md',
   md: 'max-w-xl',
   lg: 'max-w-3xl',
+  /** For the document preview — as wide as the viewport comfortably allows. */
+  xl: 'max-w-5xl',
 };
 
 /**
@@ -46,16 +48,40 @@ export function Modal({ open, onClose, title, eyebrow, children, size = 'md', fo
     };
   }, [open]);
 
-  // Escape to close + focus management.
+  /**
+   * Hold the latest onClose in a ref so the effect below can depend on `open`
+   * alone.
+   *
+   * This used to be a dependency, and callers pass a plain function declared in
+   * their component body (`onClose={closeCreate}`) rather than a memoised one. A
+   * new identity on every render meant the effect re-ran on every render — and
+   * its cleanup calls `.focus()` on the trigger. The result was that typing a
+   * single character into a modal field ran the cleanup, yanked focus back to
+   * the button that opened the dialog, and the caret was gone.
+   */
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Escape to close + focus management. Depends on `open` only; see above.
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    const timeout = window.setTimeout(() => panelRef.current?.focus(), 0);
+
+    const timeout = window.setTimeout(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      // Never pull focus out of a field the user is already typing in.
+      if (panel.contains(document.activeElement)) return;
+      panel.focus();
+    }, 0);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -63,9 +89,11 @@ export function Modal({ open, onClose, title, eyebrow, children, size = 'md', fo
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       window.clearTimeout(timeout);
+      // Return focus to whatever opened the dialog — now genuinely only once,
+      // when the dialog closes.
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

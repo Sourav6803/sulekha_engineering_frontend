@@ -449,7 +449,7 @@ export function QuotationImportWizard() {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-[var(--muted)]">
+              <thead className="table-head text-left text-xs uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="pb-2">File</th>
                   <th className="pb-2">Attach to</th>

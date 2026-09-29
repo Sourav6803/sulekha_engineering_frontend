@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
 import { BOQItemsEditor } from './BOQItemsEditor';
 import { STRUCTURE_OPTIONS, formatDocumentAmount } from './quotationDisplay';
 import { formatINR } from '@/lib/format';
@@ -9,10 +10,19 @@ import type {
   QuotationDocument,
   QuotationItem,
   QuotationNextNumber,
+  QuotationNumberCheck,
   QuotationPayload,
   QuotationStatus,
+  QuotationType,
   StructureType,
 } from '@/types/quotation';
+
+/** Mirrors parseQuotationNo on the server: PREFIX/SCHEME/FY/SEQUENCE. */
+const QUOTATION_NUMBER_PATTERN =
+  /^[A-Z0-9]{1,10}\s*\/\s*[A-Z0-9]{2,12}\s*\/\s*\d{4}\s*[-–—]\s*\d{2,4}\s*\/\s*\d{1,6}$/i;
+
+/** The server matches numbers with the spaces around the slashes ignored. */
+const normaliseNumber = (value: string) => value.trim().replace(/\s*\/\s*/g, '/').toUpperCase();
 
 const STATUS_OPTIONS: Array<{ value: QuotationStatus; label: string }> = [
   { value: 'draft', label: 'Draft' },
@@ -45,6 +55,10 @@ interface FormState {
   phoneNo: string;
   addressLine1: string;
   addressLine2: string;
+  /* The delivery block, which the business sheet prints beside Bill To. */
+  shipToName: string;
+  shipToAddress: string;
+  shipToPhone: string;
   district: string;
   pincode: string;
   systemSizeKW: string;
@@ -66,12 +80,30 @@ interface FormState {
 interface QuotationFormProps {
   initial?: QuotationDocument | null;
   mode: 'create' | 'edit';
+  /**
+   * Which sheet is being written. The consumer sheet is the fixed domestic
+   * template; the business sheet is free-form, with its own specification
+   * column and named plant sections. Defaults to the consumer sheet so every
+   * existing caller keeps its behaviour.
+   */
+  quotationType?: QuotationType;
   submitting?: boolean;
   nextNumber?: QuotationNextNumber | null;
   /** Fixed company values (terms, sizing, line limit). Fetched by the page. */
   defaults?: QuotationDefaults | null;
   /** Lets the page refresh the "next number" preview when the scheme changes. */
   onSchemeChange?: (schemeCode: string) => void;
+  /**
+   * Same, for the date: the previewed number carries a financial year, so it goes
+   * stale when the date is moved across 1 April.
+   */
+  onIssueDateChange?: (issueDate: string) => void;
+  /**
+   * Asks the server whether a typed number is still free. Create only. Returns
+   * null when the check itself could not run, which is treated as "unknown" — a
+   * failed check must never block a save.
+   */
+  onCheckNumber?: (params: { quotationNo: string; issueDate?: string }) => Promise<QuotationNumberCheck | null>;
   onSubmit: (payload: QuotationPayload) => void | Promise<void>;
 }
 
@@ -93,8 +125,11 @@ const emptyForm = (
   customerName: '',
   consumerId: '',
   phoneNo: '',
-  addressLine1: '',
-  addressLine2: '',
+    addressLine1: '',
+    addressLine2: '',
+    shipToName: '',
+    shipToAddress: '',
+    shipToPhone: '',
   district: '',
   pincode: '',
   systemSizeKW: '',
@@ -117,8 +152,12 @@ const fromQuotation = (quotation: QuotationDocument): FormState => ({
   customerName: quotation.customerName ?? '',
   consumerId: quotation.consumerId ?? '',
   phoneNo: quotation.phoneNo ?? '',
-  addressLine1: quotation.addressLine1 ?? '',
-  addressLine2: quotation.addressLine2 ?? '',
+    addressLine1: quotation.addressLine1 ?? '',
+    addressLine2: quotation.addressLine2 ?? '',
+    shipToName: quotation.shipTo?.name ?? '',
+    // One line per row, so the printed block keeps the shape it was typed in.
+    shipToAddress: (quotation.shipTo?.addressLines ?? []).join('\n'),
+    shipToPhone: quotation.shipTo?.phone ?? '',
   district: quotation.district ?? '',
   pincode: quotation.pincode ?? '',
   systemSizeKW: quotation.systemSizeKW != null ? String(quotation.systemSizeKW) : '',
@@ -145,7 +184,9 @@ const fromQuotation = (quotation: QuotationDocument): FormState => ({
 const validate = (
   form: FormState,
   items: QuotationItem[],
-  itemLimit: number = FALLBACK_ITEM_LIMIT
+  itemLimit: number = FALLBACK_ITEM_LIMIT,
+  /** Business sheets may be a material supply with no single kW figure. */
+  isBusinessSheet = false
 ): string | null => {
   const name = form.customerName.trim();
   if (name.length < 2) return 'Customer name is required (at least 2 characters).';
@@ -161,8 +202,18 @@ const validate = (
     return 'PIN code must be 6 digits.';
   }
 
-  const kW = Number(form.systemSizeKW);
-  if (!form.systemSizeKW || Number.isNaN(kW) || kW < 0.1 || kW > 100) {
+  /*
+   * The domestic sheet is priced on system size, so it is mandatory there. A
+   * business sheet is often a project to a partner, or a plain material supply,
+   * with no single kW figure — so it is optional and simply left unprinted when
+   * blank rather than blocking the quotation.
+   */
+  if (form.systemSizeKW) {
+    const kW = Number(form.systemSizeKW);
+    if (Number.isNaN(kW) || kW < 0.1 || kW > 100) {
+      return 'System size must be between 0.1 and 100 kW.';
+    }
+  } else if (!isBusinessSheet) {
     return 'System size must be between 0.1 and 100 kW.';
   }
 
@@ -200,24 +251,118 @@ const validate = (
 export function QuotationForm({
   initial = null,
   mode,
+  quotationType = 'consumer',
   submitting = false,
   nextNumber = null,
   defaults = null,
   onSchemeChange,
+  onIssueDateChange,
+  onCheckNumber,
   onSubmit,
 }: QuotationFormProps) {
   // Server driven settings, with safe fallbacks until /defaults arrives.
-  const itemLimit = defaults?.quotationItemLimit ?? FALLBACK_ITEM_LIMIT;
   const panelWpDefault = defaults?.defaultPanelWp ?? FALLBACK_PANEL_WP;
   const sizingFactor = defaults?.panelSizingFactor ?? FALLBACK_PANEL_SIZING_FACTOR;
   const validityDefault = defaults?.validityDays ?? FALLBACK_VALIDITY_DAYS;
   const schemeList = defaults?.schemes?.length ? defaults.schemes : FALLBACK_SCHEMES;
 
+  /*
+   * What this sheet carries. The server describes both sheets in /defaults, so
+   * the form and the printed document cannot disagree about the columns, the
+   * line limit or whether the total includes GST. The fallbacks below only apply
+   * until that request lands.
+   */
+  const typeOption = defaults?.quotationTypes?.find((option) => option.value === quotationType);
+  const isBusinessSheet = quotationType === 'partner';
+  const itemLimit = typeOption?.itemLimit ?? (isBusinessSheet ? 30 : defaults?.quotationItemLimit ?? FALLBACK_ITEM_LIMIT);
+  const showSpecificationColumn = typeOption?.showSpecificationColumn ?? isBusinessSheet;
+  const showSections = typeOption?.showSections ?? isBusinessSheet;
+
+  /*
+   * The wording that will actually be frozen onto the record. The two sheets
+   * state different terms — the domestic one promises a 10-year inverter
+   * warranty, the project sheet a 5-year one plus a 5-year AMC — so this has to
+   * follow the sheet rather than the company default, or the preview would show
+   * one set while the server stores the other.
+   */
+  const fixedTerms = typeOption?.terms?.length ? typeOption.terms : defaults?.terms ?? [];
+  const fixedPaymentTerms = typeOption?.paymentTerms?.length
+    ? typeOption.paymentTerms
+    : defaults?.paymentTerms ?? [];
+
   const [form, setForm] = useState<FormState>(() =>
-    initial ? fromQuotation(initial) : emptyForm(panelWpDefault, validityDefault)
+    initial
+      ? fromQuotation(initial)
+      : {
+          ...emptyForm(panelWpDefault, validityDefault),
+          // The domestic sheet quotes an all-in figure; the business sheet quotes
+          // before tax and states the rate in its terms.
+          amountIncludesGST: typeOption?.amountIncludesGST ?? !isBusinessSheet,
+        }
   );
   const [items, setItems] = useState<QuotationItem[]>(() => initial?.items ?? []);
   const [panelQtyTouched, setPanelQtyTouched] = useState(Boolean(initial?.panelQty));
+
+  // -------------------------------------------------------------- number field
+  /** What the admin has in the number box. Only used on create. */
+  const [numberInput, setNumberInput] = useState('');
+  const [numberCheck, setNumberCheck] = useState<QuotationNumberCheck | null>(null);
+  const [checkingNumber, setCheckingNumber] = useState(false);
+  /**
+   * Guards the suggestion from overwriting a number the admin typed: the
+   * "next number" preview refetches whenever the scheme or the date changes, and
+   * it must not silently replace a hand-typed number when it does.
+   */
+  const [numberTouched, setNumberTouched] = useState(false);
+
+  const suggestedNumber = nextNumber?.quotationNo ?? '';
+  const numberIsTyped = numberTouched && numberInput.trim() !== suggestedNumber;
+
+  // Take the suggestion until the admin types over it.
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (numberTouched) return;
+    setNumberInput(suggestedNumber);
+    setNumberCheck(null);
+  }, [mode, numberTouched, suggestedNumber]);
+
+  /**
+   * Check the typed number as it is edited, once typing pauses.
+   *
+   * The format is judged here first (no request for something that cannot be a
+   * number), then the server is asked whether it is free. `issueDate` travels
+   * with the request because the number's financial year has to match the date
+   * the quotation is issued on.
+   */
+  useEffect(() => {
+    if (mode !== 'create' || !numberIsTyped) return;
+    if (!onCheckNumber) return;
+
+    const candidate = numberInput.trim();
+    if (!candidate) {
+      setNumberCheck(null);
+      setCheckingNumber(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingNumber(true);
+
+    const timer = setTimeout(() => {
+      void onCheckNumber({ quotationNo: candidate, issueDate: form.issueDate || undefined })
+        .then((result) => {
+          if (!cancelled) setNumberCheck(result);
+        })
+        .finally(() => {
+          if (!cancelled) setCheckingNumber(false);
+        });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mode, numberIsTyped, numberInput, form.issueDate, onCheckNumber]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -240,12 +385,42 @@ export function QuotationForm({
     return Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100;
   }, [items]);
 
-  const validationMessage = useMemo(() => validate(form, items, itemLimit), [form, items, itemLimit]);
+  const validationMessage = useMemo(
+    () => validate(form, items, itemLimit, isBusinessSheet),
+    [form, items, itemLimit, isBusinessSheet]
+  );
 
   const numberLabel = mode === 'edit' ? initial?.quotationNo ?? '' : nextNumber?.quotationNo ?? 'Assigning…';
 
+  /**
+   * The verdict on the typed number: the local format rule first, then the
+   * server's answer — but only while that answer is about the number currently
+   * in the box. An answer from an earlier keystroke would accuse the wrong
+   * number, so it is ignored until it matches what is typed now.
+   */
+  const numberError = useMemo(() => {
+    if (mode !== 'create' || !numberIsTyped) return null;
+
+    const candidate = numberInput.trim();
+    if (!candidate) return 'A quotation number is required.';
+    if (!QUOTATION_NUMBER_PATTERN.test(candidate)) {
+      return 'Use the form SE/PMSGY/2026-27/45 — prefix / scheme / financial year / serial.';
+    }
+
+    if (numberCheck && normaliseNumber(numberCheck.quotationNo) === normaliseNumber(candidate)) {
+      return numberCheck.available ? null : numberCheck.message;
+    }
+
+    return null;
+  }, [mode, numberIsTyped, numberInput, numberCheck]);
+
+  const numberConfirmed =
+    numberIsTyped &&
+    Boolean(numberCheck?.available) &&
+    normaliseNumber(numberCheck?.quotationNo ?? '') === normaliseNumber(numberInput.trim());
+
   const handleSubmit = () => {
-    if (validationMessage) return;
+    if (validationMessage || numberError) return;
 
     const payload: QuotationPayload = {
       customerName: form.customerName.trim(),
@@ -253,13 +428,30 @@ export function QuotationForm({
       phoneNo: form.phoneNo.trim(),
       addressLine1: form.addressLine1.trim(),
       addressLine2: form.addressLine2.trim(),
+      shipTo: {
+        name: form.shipToName.trim(),
+        addressLines: form.shipToAddress
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean),
+        phone: form.shipToPhone.trim(),
+      },
       district: form.district.trim(),
       pincode: form.pincode.trim(),
-      systemSizeKW: Number(form.systemSizeKW),
+      /*
+       * Blank goes as null, not 0. A business sheet may genuinely have no single
+       * kW figure, and Number('') is 0, which the server rejects for being below
+       * its 0.1 kW floor.
+       */
+      systemSizeKW: form.systemSizeKW ? Number(form.systemSizeKW) : null,
       panelWp: form.panelWp ? Number(form.panelWp) : null,
       panelQty: effectivePanelQty ? Number(effectivePanelQty) : null,
       panelBrand: form.panelBrand.trim(),
-      inverterCapacityKW: form.inverterCapacityKW ? Number(form.inverterCapacityKW) : Number(form.systemSizeKW),
+      inverterCapacityKW: form.inverterCapacityKW
+        ? Number(form.inverterCapacityKW)
+        : form.systemSizeKW
+          ? Number(form.systemSizeKW)
+          : null,
       inverterBrand: form.inverterBrand.trim(),
       structureType: form.structureType,
       issueDate: form.issueDate || undefined,
@@ -275,6 +467,18 @@ export function QuotationForm({
     // The scheme is embedded in the number, so it may only be chosen on create.
     if (mode === 'create') payload.schemeCode = form.schemeCode;
 
+    // Which sheet to issue. Create only: the terms and the printed layout follow
+    // from it, and the server re-copies them when it changes on an edit.
+    if (mode === 'create') payload.quotationType = quotationType;
+
+    /*
+     * Only sent when the admin actually typed one. Sending the untouched
+     * suggestion would claim that exact number instead of letting the server
+     * allocate the next free one, and two admins saving at the same moment would
+     * then collide where today they do not.
+     */
+    if (mode === 'create' && numberIsTyped) payload.quotationNo = numberInput.trim();
+
     void onSubmit(payload);
   };
 
@@ -287,24 +491,100 @@ export function QuotationForm({
       }}
     >
       {/* Number */}
-      <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Quotation number</p>
-          <p className="text-lg font-semibold text-[var(--foreground)]">{numberLabel}</p>
-        </div>
-        <div className="text-right text-xs text-[var(--muted)]">
-          {mode === 'create' ? (
-            <>
-              <p>Assigned automatically on save.</p>
-              <p>{nextNumber ? `${nextNumber.financialYear} · ${nextNumber.schemeCode}` : ''}</p>
-            </>
-          ) : (
-            <>
+      <div className="surface-card px-4 py-3">
+        {mode === 'edit' ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Quotation number</p>
+              <p className="text-lg font-semibold text-[var(--foreground)]">{numberLabel}</p>
+            </div>
+            <div className="text-right text-xs text-[var(--muted)]">
               <p>The number cannot be changed.</p>
               <p>{initial?.financialYear}</p>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <label className="text-xs uppercase tracking-wide text-[var(--muted)]" htmlFor="quotation-no">
+                Quotation number
+              </label>
+
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <input
+                  id="quotation-no"
+                  className="form-input w-full max-w-[280px] font-medium tracking-wide"
+                  value={numberInput}
+                  placeholder={suggestedNumber || 'SE/PMSGY/2026-27/45'}
+                  spellCheck={false}
+                  autoComplete="off"
+                  onChange={(event) => {
+                    setNumberTouched(true);
+                    setNumberInput(event.target.value.toUpperCase());
+                  }}
+                  aria-invalid={Boolean(numberError)}
+                  aria-describedby="quotation-no-status"
+                />
+
+                {numberIsTyped && suggestedNumber && (
+                  <button
+                    type="button"
+                    className="neutral-button text-xs"
+                    onClick={() => {
+                      setNumberTouched(false);
+                      setNumberInput(suggestedNumber);
+                      setNumberCheck(null);
+                    }}
+                    title={`Use the next free number, ${suggestedNumber}`}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Use next free number
+                  </button>
+                )}
+              </div>
+
+              {/*
+                One line that always says where the number stands: checking, a
+                named problem, confirmed free, or the neutral explanation. The
+                alert role is only present when there is something to correct, so
+                a screen reader is not interrupted by the routine states.
+              */}
+              <p
+                id="quotation-no-status"
+                role={numberError ? 'alert' : undefined}
+                className="mt-1.5 text-xs"
+              >
+                {checkingNumber ? (
+                  <span className="inline-flex items-center gap-1.5 text-[var(--muted)]">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Checking {numberInput.trim()}…
+                  </span>
+                ) : numberError ? (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-[var(--error)]">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {numberError}
+                  </span>
+                ) : numberConfirmed ? (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-[var(--success)]">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    {numberInput.trim()} is free — it will be used exactly as typed.
+                  </span>
+                ) : (
+                  <span className="text-[var(--muted-soft)]">
+                    {numberIsTyped
+                      ? 'Checked against the register as you type.'
+                      : 'Assigned automatically on save — or type the number the office has already issued.'}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <div className="text-right text-xs text-[var(--muted)]">
+              <p>Next free: {suggestedNumber || '—'}</p>
+              <p>{nextNumber ? `${nextNumber.financialYear} · ${nextNumber.schemeCode}` : ''}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Customer */}
@@ -373,6 +653,44 @@ export function QuotationForm({
               maxLength={6}
             />
           </Field>
+          {/*
+            The business sheet prints a delivery block beside Bill To. The
+            domestic sheet has the columns but they are always left blank, so the
+            fields are not shown there.
+          */}
+          {isBusinessSheet && (
+            <Field label="Ship to — name">
+              <input
+                className="form-input"
+                value={form.shipToName}
+                onChange={(event) => set('shipToName', event.target.value)}
+                placeholder="Consignee / site"
+              />
+            </Field>
+          )}
+          {isBusinessSheet && (
+            <Field label="Ship to — address">
+              <textarea
+                className="form-input"
+                rows={3}
+                value={form.shipToAddress}
+                onChange={(event) => set('shipToAddress', event.target.value)}
+                placeholder={'One line per row\nSite address\nDistrict, PIN'}
+              />
+            </Field>
+          )}
+          {isBusinessSheet && (
+            <Field label="Ship to — phone">
+              <input
+                className="form-input"
+                value={form.shipToPhone}
+                onChange={(event) => set('shipToPhone', event.target.value)}
+                placeholder="9432665126"
+                inputMode="numeric"
+                maxLength={10}
+              />
+            </Field>
+          )}
           <Field label="Scheme">
             <select
               className="form-input"
@@ -492,9 +810,20 @@ export function QuotationForm({
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-[var(--foreground)]">Bill of quantities</h3>
         <p className="text-xs text-[var(--muted)]">
-          Leave this empty to start from the standard 8-line template on save.
+          {isBusinessSheet
+            ? 'Business sheets have no fixed pattern — add a line for every item. Lines sharing a section heading print under one heading with their own sub-total.'
+            : 'Leave this empty to start from the standard 8-line template on save.'}
         </p>
-        <BOQItemsEditor items={items} onChange={setItems} limit={itemLimit} disabled={submitting} />
+        <BOQItemsEditor
+          items={items}
+          onChange={setItems}
+          limit={itemLimit}
+          showSpecification={showSpecificationColumn}
+          showSections={showSections}
+          showAmountColumn={isBusinessSheet}
+          hasStandardTemplate={!isBusinessSheet}
+          disabled={submitting}
+        />
       </section>
 
       {/* Money, dates, status */}
@@ -528,7 +857,10 @@ export function QuotationForm({
               className="form-input"
               type="date"
               value={form.issueDate}
-              onChange={(event) => set('issueDate', event.target.value)}
+              onChange={(event) => {
+                set('issueDate', event.target.value);
+                onIssueDateChange?.(event.target.value);
+              }}
               required
             />
           </Field>
@@ -584,9 +916,9 @@ export function QuotationForm({
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Terms &amp; condition
             </p>
-            {defaults?.terms?.length ? (
+            {fixedTerms.length ? (
               <ol className="mt-2 space-y-1 text-xs text-[var(--secondary)]">
-                {defaults.terms.map((term, index) => (
+                {fixedTerms.map((term, index) => (
                   <li key={`fixed-term-${index}`}>{term.text}</li>
                 ))}
               </ol>
@@ -597,9 +929,9 @@ export function QuotationForm({
 
           <div className="rounded-lg bg-[var(--surface-muted)] p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Payment terms</p>
-            {defaults?.paymentTerms?.length ? (
+            {fixedPaymentTerms.length ? (
               <ul className="mt-2 space-y-1 text-xs text-[var(--secondary)]">
-                {defaults.paymentTerms.map((term, index) => (
+                {fixedPaymentTerms.map((term, index) => (
                   <li key={`fixed-payment-${index}`}>{term.text}</li>
                 ))}
               </ul>

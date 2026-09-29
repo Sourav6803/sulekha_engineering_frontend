@@ -1,4 +1,12 @@
-export type NotificationType = 'low_stock' | 'installation' | 'purchase' | 'system' | 'scheme' | 'external';
+export type NotificationType =
+  | 'low_stock'
+  | 'installation'
+  | 'purchase'
+  | 'system'
+  | 'scheme'
+  | 'external'
+  /** Office filed a signed quotation / agreement — sent to one agent only. */
+  | 'document';
 export type NotificationSource = 'internal' | 'PM Surya Ghar' | 'MNRE' | 'PIB' | 'DISCOM';
 export type NotificationCategory = 'scheme_update' | 'subsidy' | 'registration' | 'general' | 'alert' | 'info' | 'warning';
 export type NotificationPriority = 'low' | 'medium' | 'high';

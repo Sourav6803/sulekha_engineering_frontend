@@ -6,8 +6,35 @@ export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expi
 /** Mounting structure / roof type. */
 export type StructureType = 'high_rise' | 'tin_shed' | 'rcc_rooftop' | 'ground_mount';
 
-/** BOQ unit. `null` is valid — two lines of the standard template have no unit. */
-export type QuotationUnit = 'nos' | 'mtr' | 'kg' | 'lot' | 'pair' | 'bag' | 'roll' | 'box';
+/**
+ * Which sheet a quotation is.
+ *
+ * `consumer` — the domestic PM Surya Ghar quotation. Every household quotation
+ * uses the one fixed template.
+ *
+ * `partner` — the business sheet, raised for a solar partner, an institutional
+ * client or a material supply order. It has no fixed pattern: the lines, the
+ * sections and the wording are whatever that job needs.
+ */
+export type QuotationType = 'consumer' | 'partner';
+
+/**
+ * BOQ unit. `null` is valid — two lines of the standard template have no unit.
+ * `kwp`, `set` and `job` are the business sheet's units (arrays priced per kWp,
+ * switchgear and installation lots as Set./JOB).
+ */
+export type QuotationUnit =
+  | 'nos'
+  | 'mtr'
+  | 'kg'
+  | 'lot'
+  | 'pair'
+  | 'bag'
+  | 'roll'
+  | 'box'
+  | 'kwp'
+  | 'set'
+  | 'job';
 
 export type QuotationAttachmentKind = 'original_manual' | 'signed_copy' | 'other';
 
@@ -15,11 +42,18 @@ export interface QuotationItem {
   _id?: string;
   description: string;
   brandModel?: string;
+  /** Business sheet only: its own technical specification column. */
+  specification?: string;
   qty: number;
   unit?: QuotationUnit | null;
   amount?: number | null;
   isOptional?: boolean;
   order?: number;
+  /**
+   * Business sheet only: the plant section this line belongs to. Consecutive
+   * lines sharing the same label print under one heading with its own sub-total.
+   */
+  section?: string;
 }
 
 export interface QuotationTerm {
@@ -78,6 +112,8 @@ export interface QuotationDocument extends BaseDocument {
   financialYear: string;
   schemeCode: string;
   schemeLabel?: string;
+  /** Which sheet this is. Absent on records made before the business sheet existed. */
+  quotationType?: QuotationType;
   customer?: { _id: string; name: string } | string | null;
   customerName: string;
   consumerId?: string;
@@ -234,6 +270,29 @@ export interface QuotationAttachmentConfirmResult {
   failures: Array<{ reason: string; fileName?: string }>;
 }
 
+/**
+ * Everything the form needs to render one of the two sheets. The server sends
+ * both side by side so switching type needs no extra round trip, and so the
+ * form can never disagree with the printed document about what a sheet carries.
+ */
+export interface QuotationTypeOption {
+  value: QuotationType;
+  label: string;
+  /** Document heading printed on the sheet. */
+  title: string;
+  /** Line under the company name. Business sheet only. */
+  tagline: string;
+  showSerialColumn: boolean;
+  showSpecificationColumn: boolean;
+  showSections: boolean;
+  /** Business sheets quote before tax; domestic sheets quote an all-in figure. */
+  amountIncludesGST: boolean;
+  acceptance: 'client' | 'vendor';
+  itemLimit: number;
+  terms: Array<{ label?: string | null; text: string }>;
+  paymentTerms: Array<{ text: string }>;
+}
+
 export interface QuotationDefaults {
   quotationItemLimit: number;
   defaultPanelWp: number;
@@ -242,11 +301,14 @@ export interface QuotationDefaults {
   defaultSchemeCode: string;
   quotationNumberPrefix: string;
   quotationTitle: string;
+  partnerTitle?: string;
   companyName: string;
   schemes: Array<{ code: string; label?: string }>;
   structures: Array<{ value: StructureType; label: string }>;
   terms: Array<{ label?: string | null; text: string }>;
   paymentTerms: Array<{ text: string }>;
+  /** Both sheets described. Absent on an older server. */
+  quotationTypes?: QuotationTypeOption[];
 }
 
 export interface QuotationNextNumber {
@@ -274,6 +336,7 @@ export interface QuotationListQuery {
   limit?: number;
   financialYear?: string;
   schemeCode?: string;
+  quotationType?: QuotationType;
   status?: QuotationStatus;
   customer?: string;
   dateFrom?: string;
@@ -296,8 +359,10 @@ export interface QuotationRegisterQuery {
   onlyDeleted?: boolean;
 }
 
-/** Write payload. Never carries the number, sequence or lifecycle flags. */
+/** Write payload. Never carries the sequence or lifecycle flags. */
 export interface QuotationPayload {
+  /** Which sheet to issue. Create-only in effect — the terms follow from it. */
+  quotationType?: QuotationType;
   customer?: string | null;
   customerName?: string;
   consumerId?: string;
@@ -307,7 +372,8 @@ export interface QuotationPayload {
   district?: string;
   pincode?: string;
   shipTo?: QuotationShipTo;
-  systemSizeKW?: number;
+  /** Null on a business sheet that has no single kW figure. */
+  systemSizeKW?: number | null;
   panelWp?: number | null;
   panelQty?: number | null;
   panelBrand?: string;
@@ -327,6 +393,37 @@ export interface QuotationPayload {
   status?: QuotationStatus;
   notes?: string;
   schemeCode?: string;
+  /**
+   * Create only, and only when the admin typed one. Sent as written; the server
+   * parses it for the scheme and serial and refuses one whose financial year does
+   * not match the issue date. Omitted entirely to take the next number.
+   */
+  quotationNo?: string;
+}
+
+/**
+ * The answer to "is this number free?" — see `GET /quotations/check-number`.
+ *
+ * `reason` says which rule answered, because they need different corrections:
+ * a wrong format, the wrong financial year, the number itself already on a live
+ * quotation (`duplicate`), or that serial already used by another scheme's
+ * quotation (`sequence_taken` — the sequence is global across schemes).
+ */
+export interface QuotationNumberCheck {
+  quotationNo: string;
+  available: boolean;
+  reason: 'required' | 'format' | 'financial_year' | 'duplicate' | 'sequence_taken' | null;
+  message: string;
+  quotationSeq?: number;
+  financialYear?: string;
+  schemeCode?: string;
+  expectedFinancialYear?: string;
+  existing?: {
+    _id?: string;
+    quotationNo: string;
+    customerName?: string;
+    issueDate?: string;
+  };
 }
 
 export interface QuotationDeleteResult {

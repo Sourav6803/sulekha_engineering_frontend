@@ -1,10 +1,36 @@
 ﻿"use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import DashboardHeader from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthSession } from '@/lib/auth/session';
+
+const CHANGE_PASSWORD_PATH = '/change-password';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuth();
+
+  /**
+   * An admin-created (or admin-reset) account has to set its own password
+   * before it can use the console.
+   *
+   * The stored session is read on every navigation instead of being cached:
+   * the change-password screen clears the flag on the stored user, so
+   * re-reading is exactly what stops the redirect looping back afterwards.
+   * `user` is the fallback for the case where the profile had to be fetched
+   * first (no stored user yet on this device).
+   */
+  useEffect(() => {
+    const current = AuthSession.getUser() ?? user;
+    if (!current?.mustChangePassword) return;
+    if (pathname === CHANGE_PASSWORD_PATH) return;
+    router.replace(CHANGE_PASSWORD_PATH);
+  }, [user, pathname, router]);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
       <DashboardHeader />

@@ -7,6 +7,7 @@ import type {
   QuotationDocument,
   QuotationListQuery,
   QuotationNextNumber,
+  QuotationNumberCheck,
   QuotationPayload,
   QuotationRegisterQuery,
   QuotationRegisterRow,
@@ -71,6 +72,23 @@ export function useQuotations() {
     []
   );
 
+  /**
+   * Is this typed number free? Returns null when the check itself could not run,
+   * which the form treats as "unknown" rather than "bad" — a network blip must
+   * not make a perfectly good number look taken.
+   */
+  const checkNumber = useCallback(
+    async (params: { quotationNo: string; issueDate?: string }): Promise<QuotationNumberCheck | null> => {
+      try {
+        const result = await quotationsApi.checkNumber(params);
+        return result.data;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
   const fetchStats = useCallback(async (params: { financialYear?: string } = {}): Promise<QuotationStats | null> => {
     try {
       const result = await quotationsApi.stats(params);
@@ -110,6 +128,7 @@ export function useQuotations() {
     fetchQuotations,
     fetchRegister,
     fetchNextNumber,
+    checkNumber,
     fetchStats,
     createQuotation,
     updateQuotation,

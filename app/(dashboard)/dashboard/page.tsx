@@ -18,7 +18,9 @@ import { materialsApi } from '@/lib/api/materials.api';
 import { installationsApi } from '@/lib/api/installations.api';
 import { customersApi } from '@/lib/api/customers.api';
 import { purchasesApi } from '@/lib/api/purchases.api';
+import { AgentDashboard } from '@/components/features/agent/AgentDashboard';
 import { installationStatusStyle } from '@/components/features/installations/installationStatus';
+import { useAuth } from '@/hooks/useAuth';
 import type { MaterialSummary, MaterialDocument } from '@/types/material';
 import type { InstallationDocument } from '@/types/installation';
 import type { PurchaseDocument } from '@/types/purchase';
@@ -57,7 +59,8 @@ const SCHEME_STATS = [
 const SCHEME_HIGHLIGHTS = [
   { label: 'Rooftop Solar', tone: 'bg-[var(--primary-tint)] text-[var(--primary-active)]' },
   { label: 'Free Electricity', tone: 'bg-[var(--success-tint)] text-[var(--success)]' },
-  { label: '60% Subsidy', tone: 'bg-[var(--primary-tint)] text-[var(--primary-active)]' },
+  // Subsidy is money — the one place the solar-gold accent is allowed to speak.
+  { label: '60% Subsidy', tone: 'bg-[var(--accent-tint)] text-[var(--accent)]' },
   { label: 'Clean Energy', tone: 'bg-[var(--success-tint)] text-[var(--success)]' },
 ];
 
@@ -94,7 +97,40 @@ function MetricCard({ label, value, icon: Icon, tone, chip }: MetricCardProps) {
   );
 }
 
+/**
+ * /dashboard is role aware. A field agent gets their own applications dashboard
+ * (AgentDashboard); admin, manager and every other office role keep the
+ * dashboard below. Deliberately one route, not two.
+ */
 export default function DashboardPage() {
+  const { user } = useAuth();
+
+  // Wait until the signed-in user is known before choosing. Rendering the office
+  // dashboard first would fire five requests an agent is not authorised for.
+  if (!user) {
+    return (
+      <main className="canvas-warm min-h-screen px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-7">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <div className="skeleton h-28 w-full rounded-[1.25rem]" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((card) => (
+              <div key={card} className="skeleton h-24 w-full rounded-[1.25rem]" />
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (user.role === 'agent') {
+    return <AgentDashboard user={user} />;
+  }
+
+  return <OfficeDashboard />;
+}
+
+/** The office dashboard: stock, installations, purchases and the scheme notes. */
+function OfficeDashboard() {
   const [summary, setSummary] = useState<MaterialSummary | null>(null);
   const [recentInstallations, setRecentInstallations] = useState<InstallationDocument[]>([]);
   const [totalCustomers, setTotalCustomers] = useState(0);
@@ -147,7 +183,7 @@ export default function DashboardPage() {
         {/* Hero - a slim welcome banner rather than a deep panel, so the
             operational numbers below stay near the fold. */}
         <header className="panel relative overflow-hidden p-5 sm:p-6">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-[var(--gradient-sunrise)]" />
+          <span aria-hidden="true" className="accent-bar absolute inset-y-0 left-0 w-1" />
           <img
             src="/sulekha_engineering_logo.jpeg"
             alt=""

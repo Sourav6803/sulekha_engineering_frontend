@@ -196,8 +196,8 @@ export function BOMExcelEditor({
       <div className="screen-only overflow-hidden rounded-2xl border border-[var(--border)]">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="bg-[var(--surface-muted)] text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+             <thead className="table-head">
+               <tr className="text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
                 <th className="px-3 py-2.5 font-semibold" style={{ width: '10%' }}>PART</th>
                 <th className="px-2 py-2.5 font-semibold text-center" style={{ width: '4%' }}>SL</th>
                 <th className="px-3 py-2.5 font-semibold" style={{ width: '22%' }}>ITEM NAME</th>
@@ -272,7 +272,7 @@ export function BOMExcelEditor({
         <div
           style={{
             fontFamily: "'Helvetica Neue', Arial, sans-serif",
-            color: '#111827',
+            color: '#0F2A1B',
             fontSize: '7.8px',
             lineHeight: '1.3',
           }}
@@ -283,24 +283,24 @@ export function BOMExcelEditor({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderBottom: '2px solid #f59e0b',
+              borderBottom: '2px solid #0B7A3D',
               paddingBottom: '6px',
               marginBottom: '8px',
             }}
           >
             <div>
               <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '0.05em' }}>SULEKHA ENGINEERING</div>
-              <div style={{ fontSize: '7.6px', color: '#6b7280', marginTop: '1px' }}>
+              <div style={{ fontSize: '7.6px', color: '#4C6555', marginTop: '1px' }}>
                 PM Surya Ghar Registered Vendor • Solar Power Plant
               </div>
-              <div style={{ fontSize: '7.6px', color: '#6b7280', marginTop: '1px' }}>☎ +91 90000 00000</div>
+              <div style={{ fontSize: '7.6px', color: '#4C6555', marginTop: '1px' }}>☎ +91 90000 00000</div>
             </div>
             <div
               style={{
                 width: '34px',
                 height: '34px',
                 borderRadius: '50%',
-                background: '#f59e0b',
+                background: '#0B7A3D',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -315,10 +315,10 @@ export function BOMExcelEditor({
           </div>
 
           {/* Job details */}
-          <div style={{ border: '1px solid #d1d5db', borderRadius: '3px', marginBottom: '8px' }}>
+          <div style={{ border: '1px solid #C8E2D1', borderRadius: '3px', marginBottom: '8px' }}>
             <div
               style={{
-                background: '#f3f4f6',
+                background: '#EAF6EE',
                 padding: '3px 6px',
                 fontWeight: 700,
                 fontSize: '7.8px',
@@ -361,8 +361,8 @@ export function BOMExcelEditor({
                   <th
                     key={h}
                     style={{
-                      border: '1px solid #111827',
-                      background: '#f59e0b',
+                      border: '1px solid #064E27',
+                      background: '#0B7A3D',
                       color: '#fff',
                       padding: '2px 4px',
                       fontWeight: 700,
@@ -383,7 +383,7 @@ export function BOMExcelEditor({
                       <td
                         rowSpan={rows.slice(index).filter((r) => r.section === row.section).length}
                         style={{
-                          border: '1px solid #9ca3af',
+                          border: '1px solid #9DC3AC',
                           padding: '2px 4px',
                           fontWeight: 700,
                           verticalAlign: 'top',
@@ -392,22 +392,22 @@ export function BOMExcelEditor({
                         {row.section}
                       </td>
                     ) : null}
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', textAlign: 'center' }}>{row.serial}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', fontWeight: 600 }}>{row.name}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px' }}>{row.desc}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', textAlign: 'center' }}>{row.uom}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', textAlign: 'center' }}>{row.serial}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', fontWeight: 600 }}>{row.name}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px' }}>{row.desc}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', textAlign: 'center' }}>{row.uom}</td>
                     <td
                       style={{
-                        border: '1px solid #9ca3af',
+                        border: '1px solid #9DC3AC',
                         padding: '2px 4px',
                         textAlign: 'center',
                         fontWeight: 700,
-                        color: '#B72B28',
+                        color: '#B33A2E',
                       }}
                     >
                       {row.actualQty ?? row.qty}
                     </td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px' }}>{row.remark || ''}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px' }}>{row.remark || ''}</td>
                   </tr>
                 );
               })}

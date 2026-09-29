@@ -46,7 +46,7 @@ export default function Loading() {
         <div className="relative flex h-14 w-14 items-center justify-center">
           <span
             className="absolute inset-0 rounded-full opacity-30 blur-md"
-            style={{ background: "var(--gradient-sunrise)" }}
+            style={{ background: "var(--gradient-leaf)" }}
           />
           <SunMark className="animate-spin-slow relative h-14 w-14 text-[var(--primary)]" />
         </div>

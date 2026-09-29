@@ -177,8 +177,8 @@ export function BOMPreview({
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border-soft)] text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+                   <thead className="table-head">
+                     <tr className="text-xs uppercase tracking-[0.12em] text-[var(--muted-soft)]">
                       <th className="px-5 py-3 font-semibold">Item</th>
                       <th className="hidden px-3 py-3 font-semibold md:table-cell">Code</th>
                       <th className="hidden px-3 py-3 font-semibold sm:table-cell">UOM</th>
@@ -247,26 +247,26 @@ export function BOMPreview({
         <div
           style={{
             fontFamily: "'Helvetica Neue', Arial, sans-serif",
-            color: '#111827',
+            color: '#0F2A1B',
             fontSize: '7.8px',
             lineHeight: '1.3',
           }}
         >
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f59e0b', paddingBottom: '6px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0B7A3D', paddingBottom: '6px', marginBottom: '8px' }}>
             <div>
               <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '0.05em' }}>SULEKHA ENGINEERING</div>
-              <div style={{ fontSize: '7.6px', color: '#6b7280', marginTop: '1px' }}>
+              <div style={{ fontSize: '7.6px', color: '#4C6555', marginTop: '1px' }}>
                 PM Surya Ghar Registered Vendor • Solar Power Plant
               </div>
-              <div style={{ fontSize: '7.6px', color: '#6b7280', marginTop: '1px' }}>☎ +91 90000 00000</div>
+              <div style={{ fontSize: '7.6px', color: '#4C6555', marginTop: '1px' }}>☎ +91 90000 00000</div>
             </div>
             <div
               style={{
                 width: '34px',
                 height: '34px',
                 borderRadius: '50%',
-                background: '#f59e0b',
+                background: '#0B7A3D',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -281,8 +281,8 @@ export function BOMPreview({
           </div>
 
           {/* Job details */}
-          <div style={{ border: '1px solid #d1d5db', borderRadius: '3px', marginBottom: '8px' }}>
-            <div style={{ background: '#f3f4f6', padding: '3px 6px', fontWeight: 700, fontSize: '7.8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div style={{ border: '1px solid #C8E2D1', borderRadius: '3px', marginBottom: '8px' }}>
+            <div style={{ background: '#EAF6EE', padding: '3px 6px', fontWeight: 700, fontSize: '7.8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Job Details
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px', padding: '4px 6px' }}>
@@ -306,9 +306,9 @@ export function BOMPreview({
                   <th
                     key={h}
                     style={{
-                      border: '1px solid #111827',
-                      background: '#f59e0b',
-                      color: '#111827',
+                      border: '1px solid #064E27',
+                      background: '#0B7A3D',
+                      color: '#FFFFFF',
                       padding: '2px 4px',
                       textAlign: 'left',
                       fontSize: '7.2px',
@@ -328,17 +328,17 @@ export function BOMPreview({
                     {index === 0 ? (
                       <td
                         rowSpan={sectionRows.length}
-                        style={{ border: '1px solid #9ca3af', padding: '2px 4px', fontWeight: 700, verticalAlign: 'top' }}
+                        style={{ border: '1px solid #9DC3AC', padding: '2px 4px', fontWeight: 700, verticalAlign: 'top' }}
                       >
                         {row.section}
                       </td>
                     ) : null}
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', textAlign: 'center' }}>{index + 1}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', fontWeight: 600 }}>{row.materialName}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px' }}>{row.materialCode}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px' }}>{row.unit}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px', textAlign: 'center' }}>{formatQty(qtyOf(row))}</td>
-                    <td style={{ border: '1px solid #9ca3af', padding: '2px 4px' }}>{row.remark ?? ''}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', textAlign: 'center' }}>{index + 1}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', fontWeight: 600 }}>{row.materialName}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px' }}>{row.materialCode}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px' }}>{row.unit}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px', textAlign: 'center' }}>{formatQty(qtyOf(row))}</td>
+                    <td style={{ border: '1px solid #9DC3AC', padding: '2px 4px' }}>{row.remark ?? ''}</td>
                   </tr>
                 ))
               )}

@@ -46,64 +46,96 @@
    ============================================================ */
 
 :root {
-  /* ---- Surfaces ---- */
-  --background: #FEF9F0;
-  --surface: #FFF7EE;
-  --surface-muted: #FFF1E0;
-  --surface-strong: #FFF1D9;
-  --surface-glass: rgba(255, 247, 238, 0.72);
+  /* ============================================================
+     THEME — "Leaf" (clean-energy green)
 
-  /* ---- Text ---- */
-  --foreground: #36260F;
-  --muted: #6A5442;
-  --muted-soft: #8B7561;
-  --border: #E6C7A3;
-  --border-soft: #F0DBBC;
+     The palette is a four-stop discipline, not a green wash:
+       · deep forest   → sidebar, dark hero panels
+       · leaf green    → the single brand colour (--primary)
+       · mint          → tints, chips, table stripes, canvas
+       · solar gold    → the ONE warm accent, used sparingly
+                         (subsidy/scheme highlights only)
 
-  /* ---- Brand ---- */
-  --primary: #EA8A3B;
+     Semantic colours are deliberately shifted off the brand hue so
+     they never read as "just more brand green":
+       success = teal-green, warning = gold, error = clay red.
+     ============================================================ */
+
+  /* ---- Surfaces: clean paper-white lifted by a mint cast ---- */
+  --background: #F3FAF5;
+  --surface: #FFFFFF;
+  --surface-muted: #E8F4EC;
+  --surface-strong: #D9EEE1;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+
+  /* ---- Text: deep forest ink, never pure black ---- */
+  --foreground: #0F2A1B;
+  --muted: #4C6555;
+  --muted-soft: #7B9083;
+  --border: #C8E2D1;
+  --border-soft: #DFEFE5;
+
+  /* ---- Brand: leaf green ---- */
+  --primary: #0B7A3D;
   --primary-foreground: #FFFFFF;
-  --primary-hover: #D77630;
-  --primary-active: #B86225;
-  --primary-tint: #FBE3C6;
-  --secondary: #A28772;
+  --primary-hover: #096532;
+  /* The label/value colour on mint tints (11px eyebrows, KPI figures,
+     links-on-tint). Kept light enough to still read as *green* rather
+     than near-black forest — contrast on white is 7.9:1, on
+     --primary-tint 6.8:1. */
+  --primary-active: #0A5E30;
+  /* Button pressed state — deliberately a step darker than
+     --primary-hover so a click is visible. */
+  --primary-pressed: #064E27;
+  --primary-tint: #DBF4E3;
+  /* Mid tint — darker than --primary-tint, lighter than --primary.
+     Also the token notifications/NotificationCard already referenced
+     as hover:border-[var(--primary-soft)] before it existed. */
+  --primary-soft: #B4E3C6;
+  --primary-bright: #34C46B;
+  --secondary: #5E7A69;
 
-  /* Reserve gradient for one signature moment (hero, login card
-     edge, logo mark) — never on repeating UI elements like every
-     button or card, per restraint principle. */
-  --gradient-sunrise: linear-gradient(135deg, #FFC978 0%, #EA8A3B 55%, #C4621F 100%);
+  /* ---- Solar gold: the single warm accent ---- */
+  --accent: #C98A08;
+  --accent-tint: #FBF0D4;
+
+  /* Reserve the gradient for one signature moment (hero, login card
+     edge, logo mark, active accent bar) — never on repeating UI
+     elements like every button or card, per restraint principle. */
+  --gradient-leaf: linear-gradient(135deg, #7BE0A0 0%, #12964C 50%, #064E27 100%);
   --gradient-hairline: linear-gradient(90deg, transparent, var(--primary), transparent);
 
-  /* ---- Semantic (kept visually distinct from brand saffron) ---- */
-  --success: #1E7A42;
-  --success-tint: #DEEFE2;
-  --error: #B72B28;
-  --error-tint: #F7E1E0;
-  --warning: #C76E12;
-  --warning-tint: #F9E6D2;
+  /* ---- Semantic (kept visually distinct from brand leaf green) ---- */
+  --success: #0F7A5A;
+  --success-tint: #D3F2E9;
+  --error: #B33A2E;
+  --error-tint: #FBE4E0;
+  --warning: #A9740A;
+  --warning-tint: #FBF0D4;
 
   /* ---- Sidebar / Header ---- */
-  --sidebar-bg: #0F172A;
-  --sidebar-text: #94A3B8;
-  --sidebar-text-active: #F1F5F9;
-  --sidebar-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-active: rgba(234, 138, 59, 0.18);
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --header-bg: #FFFFFF;
-  --header-border: #E6C7A3;
-  --header-shadow: 0 1px 3px rgba(76, 45, 11, 0.08), 0 4px 12px rgba(76, 45, 11, 0.06);
+  --sidebar-bg: #082B18;
+  --sidebar-text: #A3C4B0;
+  --sidebar-text-active: #F0FBF4;
+  --sidebar-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-active: rgba(52, 196, 107, 0.20);
+  --sidebar-border: rgba(255, 255, 255, 0.09);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --header-border: #D9EDE0;
+  --header-shadow: 0 1px 2px rgba(9, 60, 32, 0.04), 0 8px 24px -14px rgba(9, 60, 32, 0.16);
 
-  /* ---- Elevation ---- */
-  --shadow-xs: 0 1px 2px rgba(76, 45, 11, 0.06);
-  --shadow-sm: 0 4px 12px rgba(76, 45, 11, 0.08);
-  --shadow: 0 20px 60px rgba(76, 45, 11, 0.14);
-  --shadow-lg: 0 30px 80px rgba(76, 45, 11, 0.18);
+  /* ---- Elevation (green-tinted, so shadows sit in the same
+     colour family as the canvas instead of going muddy grey) ---- */
+  --shadow-xs: 0 1px 2px rgba(9, 60, 32, 0.05);
+  --shadow-sm: 0 4px 12px rgba(9, 60, 32, 0.07);
+  --shadow: 0 20px 60px rgba(9, 60, 32, 0.13);
+  --shadow-lg: 0 30px 80px rgba(9, 60, 32, 0.17);
   /* Light, wide elevation for dense content panels. --shadow is a hero
      shadow (20px/60px blur) and reads as heavy when every card on a
      dashboard carries it. */
-  --shadow-card: 0 1px 2px rgba(76, 45, 11, 0.04), 0 6px 20px -10px rgba(76, 45, 11, 0.16);
-  --shadow-card-hover: 0 2px 4px rgba(76, 45, 11, 0.05), 0 14px 32px -14px rgba(76, 45, 11, 0.22);
-  --shadow-glow: 0 0 0 1px rgba(234, 138, 59, 0.12), 0 8px 24px rgba(234, 138, 59, 0.22);
+  --shadow-card: 0 1px 2px rgba(9, 60, 32, 0.04), 0 6px 20px -10px rgba(9, 60, 32, 0.14);
+  --shadow-card-hover: 0 2px 4px rgba(9, 60, 32, 0.05), 0 14px 32px -14px rgba(9, 60, 32, 0.20);
+  --shadow-glow: 0 0 0 1px rgba(11, 122, 61, 0.14), 0 8px 24px rgba(11, 122, 61, 0.24);
 
   /* ---- Radius ---- */
   --radius-xs: 0.5rem;
@@ -187,11 +219,11 @@
   }
 
   ::selection {
-    background: rgba(234, 138, 59, 0.18);
+    background: rgba(11, 122, 61, 0.18);
     color: var(--foreground);
   }
 
-  /* Warm-toned scrollbar instead of the OS default gray */
+  /* Fresh-toned scrollbar instead of the OS default gray */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -228,7 +260,7 @@
 
 @layer components {
   .surface-card {
-    @apply rounded-[var(--radius)] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow)];
+    @apply rounded-[var(--radius)] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)];
   }
 
   /* Dense content panel — the everyday card on data-heavy screens
@@ -238,18 +270,44 @@
     @apply rounded-[1.25rem] border border-[var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)];
   }
 
-  /* Soft layered canvas behind dashboard pages: a warm sunrise wash plus a
-     faint cool counter-light. Gives the white panels something to lift off
-     instead of sitting on a flat cream field. */
+  /* Soft layered canvas behind dashboard pages: a fresh canopy wash
+     (soft leaf light top-left, solar gold counter-light top-right)
+     over a mint-to-white base. Gives the white panels something to
+     lift off instead of sitting on a flat field. */
   .canvas-warm {
     background:
-      radial-gradient(1100px 520px at 6% -12%, rgba(234, 138, 59, 0.14), transparent 62%),
-      radial-gradient(880px 460px at 102% -6%, rgba(30, 122, 66, 0.09), transparent 58%),
-      linear-gradient(180deg, #fffdf8 0%, #fef9f0 44%, #fbf1e2 100%);
+      radial-gradient(1100px 520px at 6% -12%, rgba(18, 150, 76, 0.13), transparent 62%),
+      radial-gradient(880px 460px at 102% -6%, rgba(201, 138, 8, 0.10), transparent 58%),
+      linear-gradient(180deg, #ffffff 0%, #f3faf5 44%, #e7f4ec 100%);
+  }
+
+  /* ---- App chrome ---- */
+
+  /* Sidebar canvas — deep forest with a soft canopy light at the top
+     so the flat dark panel gains depth without a second colour. */
+  .sidebar-surface {
+    background:
+      radial-gradient(520px 240px at 50% -10%, rgba(52, 196, 107, 0.20), transparent 70%),
+      linear-gradient(180deg, #0B3520 0%, #082B18 55%, #061F12 100%);
+  }
+
+  /* Sticky header — translucent paper over the canvas, so content
+     scrolls under a blur instead of under a solid white block. */
+  .header-surface {
+    background: var(--header-bg);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+
+  /* 1px–4px accent rule carrying the leaf gradient. Used for the
+     left edge of hero/banner panels. (background-*image*, not
+     background-color — a gradient is not a colour.) */
+  .accent-bar {
+    background-image: var(--gradient-leaf);
   }
 
   .surface-glass {
-    @apply rounded-[var(--radius)] border border-white/40 shadow-[var(--shadow-lg)] backdrop-blur-xl;
+    @apply rounded-[var(--radius)] border border-white/50 shadow-[var(--shadow-lg)] backdrop-blur-xl;
     background: var(--surface-glass);
   }
 
@@ -257,11 +315,13 @@
      hero panel / a dashboard welcome banner. Not for repeated use. */
   .surface-sunrise {
     @apply rounded-[var(--radius-lg)] text-white shadow-[var(--shadow-lg)];
-    background: var(--gradient-sunrise);
+    background: var(--gradient-leaf);
+    /* Inner top highlight keeps the green from going flat. */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), var(--shadow-lg);
   }
 
   .brand-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-sm)] transition-all ease-out hover:bg-[var(--primary-hover)] hover:shadow-[var(--shadow-glow)] active:bg-[var(--primary-active)] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-sm)] transition-all ease-out hover:bg-[var(--primary-hover)] hover:shadow-[var(--shadow-glow)] active:bg-[var(--primary-pressed)] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
     transition-duration: var(--duration);
   }
 
@@ -276,7 +336,7 @@
   }
 
   .form-input {
-    @apply w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-white/95 px-4 py-3 text-base text-[var(--foreground)] outline-none transition-all ease-out placeholder:text-[var(--muted-soft)] focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(234,138,59,0.14)];
+    @apply w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-white/95 px-4 py-3 text-base text-[var(--foreground)] outline-none transition-all ease-out placeholder:text-[var(--muted-soft)] focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,122,61,0.14)];
     transition-duration: var(--duration);
   }
 
@@ -325,7 +385,7 @@
   }
 
   /* Thin decorative rule used sparingly to separate a hero from
-     content — carries the sunrise gradient instead of a flat line. */
+     content — carries the leaf gradient instead of a flat line. */
   .hairline-sunrise {
     height: 2px;
     background: var(--gradient-hairline);
@@ -350,7 +410,7 @@
   }
 
   /* Fixed top bar for route/page-transition loading — a slim
-     sunrise-gradient sweep, not a full-page blocking spinner. */
+     leaf-gradient sweep, not a full-page blocking spinner. */
   .route-progress {
     @apply fixed left-0 top-0 z-50 h-1 w-full overflow-hidden;
     background: var(--surface-strong);
@@ -360,13 +420,77 @@
     display: block;
     height: 100%;
     width: 40%;
-    background: var(--gradient-sunrise);
+    background: var(--gradient-leaf);
     animation: route-sweep 1.2s ease-in-out infinite;
   }
 
   .animate-spin-slow {
     animation: spin-slow 5s linear infinite;
   }
+}
+
+/* ============================================================
+   TABLE HEADERS — intentionally OUTSIDE every @layer.
+
+   Tailwind v4 orders its layers theme -> base -> components -> utilities,
+   and a later layer beats an earlier one *regardless of specificity*. A
+   rule written in the components layer therefore can never override a
+   utility class on the same element — which is exactly what a table head
+   has to do, because every <th> already carries text-[var(--muted-soft)]
+   and tracking-[…] utilities.
+
+   Unlayered CSS outranks all layers, so these rules do win over those
+   utilities. This is the only place in the sheet where that is intended;
+   everything else stays token-driven inside @layer components.
+
+   The band itself: one green head across every table, whether the table
+   uses border-separate card rows (DataTable) or plain collapsed borders
+   (the BOM / BOQ sheets). Defined once here so the twelve tables in the
+   app cannot drift apart.
+
+   padding-block is set here on purpose: the heads ranged from pb-1 to
+   py-3, which produced green bands of visibly different heights.
+   ============================================================ */
+
+.table-head th {
+  background-image: linear-gradient(180deg, #0E8A45 0%, #0B7A3D 100%);
+  color: rgba(255, 255, 255, 0.95);
+  padding-block: 0.65rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+/* The head row's own tint and bottom border would sit under the band —
+   the band is the separator now. */
+.table-head tr {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+/* Sort affordances live inside a <button> in the head. */
+.table-head th button,
+.table-head th button:hover {
+  color: #FFFFFF;
+}
+.table-head th svg,
+.table-head th button span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* Rounded ends so the band matches the card radius above and below it. */
+.table-head th:first-child {
+  border-top-left-radius: 0.9rem;
+  border-bottom-left-radius: 0.9rem;
+}
+.table-head th:last-child {
+  border-top-right-radius: 0.9rem;
+  border-bottom-right-radius: 0.9rem;
+}
+
+/* A hovered sort button dims slightly instead of turning ink-dark (which
+   is what its own hover:text-[var(--foreground)] utility would do). */
+.table-head th button:hover {
+  opacity: 0.85;
 }
 
 @keyframes shimmer {

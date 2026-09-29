@@ -160,6 +160,9 @@ export default function EditQuotationPage() {
           key={quotation._id}
           initial={quotation}
           mode="edit"
+          // Records made before the business sheet existed carry no type, and
+          // they are all consumer sheets.
+          quotationType={quotation.quotationType ?? 'consumer'}
           submitting={saving}
           defaults={defaults}
           onSubmit={handleSubmit}

@@ -79,3 +79,49 @@ export const canManageAgreements = (role?: AuthRole): boolean =>
 export const canDeleteAgreement = (role?: AuthRole): boolean => (role === 'admin');
 /** The PDF download is admin/manager; printing is open to every signed in user. */
 export const canDownloadQuotationPdf = (role?: AuthRole): boolean => (role ? QUOTATION_EDITOR_ROLES.includes(role) : false);
+
+/**
+ * Application (field intake) gates mirroring
+ * backend/src/routes/application.routes.js:
+ * INTAKE_ROLES = ['admin', 'manager', 'agent'] may list, read and file
+ * applications, and the server scopes an agent to their own records. The review
+ * half of the workflow stays with admin/manager and is not exposed to agents.
+ */
+const APPLICATION_INTAKE_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
+
+export const canViewApplications = (role?: AuthRole): boolean =>
+  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
+export const canCreateApplication = (role?: AuthRole): boolean =>
+  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
+export const canViewApplicationStats = (role?: AuthRole): boolean =>
+  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
+/** The agent's own dashboard (applications only) instead of the office dashboard. */
+export const canViewAgentDashboard = (role?: AuthRole): boolean => role === 'agent';
+
+/**
+ * The field half of the application workflow — writing consumer data.
+ *
+ * Only the agent who collected the application may open it, edit its fields,
+ * upload / replace / delete documents, submit it or discard it. The backend
+ * applies `authorize('agent')` (FIELD_AGENT_ROLES) to every one of those routes,
+ * so admin and manager are refused with a 403 rather than the edit being hidden
+ * on the client alone.
+ */
+export const canEditApplication = (role?: AuthRole): boolean => role === 'agent';
+
+/**
+ * The office half of the application workflow — judging, not typing.
+ *
+ * Admin and manager read the record, rule on each document, verify the
+ * electricity bill, move the application along the workflow and file the
+ * consumer-signed copy (backend REVIEW_ROLES). They never write the consumer
+ * data itself: that stays with the agent who collected it.
+ */
+export const canReviewApplication = (role?: AuthRole): boolean => role === 'admin' || role === 'manager';
+
+/**
+ * Agent account management is admin only — backend/src/routes/agent.routes.js
+ * applies `authorize('admin')` to the whole module, manager included.
+ */
+export const canManageAgents = (role?: AuthRole): boolean => role === 'admin';
+export const canViewAgents = (role?: AuthRole): boolean => canManageAgents(role);

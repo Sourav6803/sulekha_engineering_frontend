@@ -10,6 +10,7 @@ import {
   Users,
   Wrench,
   ClipboardList,
+  ClipboardCheck,
   Bell,
   ChevronsLeft,
   ChevronsRight,
@@ -17,9 +18,12 @@ import {
   FileText,
   FileSignature,
   ListOrdered,
+  UserCog,
   X,
   Sun,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthRole } from "@/types/auth";
 import { useSidebarStore } from "@/store/useSidebarStore";
 import { useUIStore } from "@/store/useUIStore";
 // import { BrandMark } from "./Brandmark";
@@ -28,6 +32,8 @@ type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
+  /** Roles allowed to see this entry. Omitted = every signed in user. */
+  roles?: AuthRole[];
 };
 
 type NavGroup = {
@@ -35,6 +41,7 @@ type NavGroup = {
   label: string;
   icon: typeof LayoutDashboard;
   children: NavItem[];
+  roles?: AuthRole[];
 };
 
 type NavEntry = NavItem | NavGroup;
@@ -42,19 +49,41 @@ type NavEntry = NavItem | NavGroup;
 const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
 
 /**
+ * The field agent only collects consumer applications, so it sees the
+ * dashboard, its applications and notifications — nothing from the office side.
+ */
+const OFFICE_ROLES: AuthRole[] = [
+  'admin',
+  'manager',
+  'warehouse_staff',
+  'installation_team',
+  'viewer',
+  'administration',
+];
+
+/** Applications are shared by the field agents and the roles that oversee them. */
+const APPLICATION_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
+
+/** Agent accounts are created and managed by the admin alone. */
+const AGENT_ADMIN_ROLES: AuthRole[] = ['admin'];
+
+/**
  * Quotation sits in its own group with two entries, both reading the same
  * records: the quotation sheet and the SL number register.
  */
 const NAV_ENTRIES: NavEntry[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/materials", label: "Materials", icon: Package },
-  { href: "/suppliers", label: "Suppliers", icon: Truck },
-  { href: "/customers", label: "Customers", icon: Users },
-  { href: "/installations", label: "Installations", icon: Wrench },
+  { href: "/applications", label: "Applications", icon: ClipboardCheck, roles: APPLICATION_ROLES },
+  { href: "/agents", label: "Agents", icon: UserCog, roles: AGENT_ADMIN_ROLES },
+  { href: "/materials", label: "Materials", icon: Package, roles: OFFICE_ROLES },
+  { href: "/suppliers", label: "Suppliers", icon: Truck, roles: OFFICE_ROLES },
+  { href: "/customers", label: "Customers", icon: Users, roles: OFFICE_ROLES },
+  { href: "/installations", label: "Installations", icon: Wrench, roles: OFFICE_ROLES },
   {
     key: "quotation",
     label: "Quotation",
     icon: FileText,
+    roles: OFFICE_ROLES,
     children: [
       { href: "/quotations", label: "Quotations", icon: FileText },
       { href: "/quotations/serial", label: "Quotation SL Number", icon: ListOrdered },
@@ -62,13 +91,15 @@ const NAV_ENTRIES: NavEntry[] = [
   },
   // The consumer agreement (4 page PM Surya Ghar document) has its own menu:
   // it can be raised for a consumer whose quotation is not in the system.
-  { href: "/agreements", label: "Agreements", icon: FileSignature },
-  { href: "/bom-templates", label: "BOM Templates", icon: ClipboardList },
+  { href: "/agreements", label: "Agreements", icon: FileSignature, roles: OFFICE_ROLES },
+  { href: "/bom-templates", label: "BOM Templates", icon: ClipboardList, roles: OFFICE_ROLES },
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const role = user?.role;
   const isOpen = useSidebarStore((state) => state.isOpen);
   const closeMobile = useSidebarStore((state) => state.closeMobile);
   const isCollapsed = useSidebarStore((state) => state.isCollapsed);
@@ -79,6 +110,14 @@ export default function Sidebar() {
   useEffect(() => {
     closeMobile();
   }, [pathname, closeMobile]);
+
+  /**
+   * Only the entries this role may reach. Until the signed-in user has been
+   * read the full list is shown, which is exactly the previous behaviour.
+   */
+  const navEntries = role
+    ? NAV_ENTRIES.filter((entry) => !entry.roles || entry.roles.includes(role))
+    : NAV_ENTRIES;
 
   /**
    * The most specific matching route wins, so "/quotations/serial" does not
@@ -117,7 +156,7 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`flex h-full flex-col overflow-y-auto border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] transition-all duration-300 ease-out
+        className={`flex h-full flex-col overflow-y-auto border-r border-[var(--sidebar-border)] sidebar-surface transition-all duration-300 ease-out
           fixed inset-y-0 left-0 z-50 lg:sticky lg:top-16 lg:z-30 lg:h-[calc(100vh-4rem)] lg:translate-x-0 lg:overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           ${isCollapsed ? "lg:w-[72px]" : "lg:w-64"}
@@ -149,7 +188,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ENTRIES.map((entry) => {
+          {navEntries.map((entry) => {
             if (!isGroup(entry)) {
               const active = isRouteActive(entry.href);
               return (
@@ -163,7 +202,7 @@ export default function Sidebar() {
                   <span className={`truncate transition-opacity duration-200 ${isCollapsed ? "lg:hidden" : ""}`}>
                     {entry.label}
                   </span>
-                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
+                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--primary-bright)] shadow-[0_0_8px_rgba(52,196,107,0.8)]" />}
                 </Link>
               );
             }

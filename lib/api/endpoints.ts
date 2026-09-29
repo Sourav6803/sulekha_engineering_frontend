@@ -71,6 +71,8 @@ export const ENDPOINTS = {
     root: '/quotations',
     /** next number the next save will receive (read-only preview) */
     nextNumber: '/quotations/next-number',
+    /** is a hand-typed number still free? (read-only, nothing reserved) */
+    checkNumber: '/quotations/check-number',
     /** Quotation SL Number register - mirrors the old Excel sheet */
     register: '/quotations/register',
     /** fixed terms / payment terms and the form defaults (read only) */
@@ -95,6 +97,40 @@ export const ENDPOINTS = {
     /** the four page document */
     pdf: (id: string) => `/agreements/${id}/pdf`,
     print: (id: string) => `/agreements/${id}/print`
+  },
+  /** Field agent accounts — every route here is admin only. */
+  agents: {
+    root: '/agents',
+    /** Will the welcome / reset emails actually go out? */
+    emailStatus: '/agents/email-status',
+    /** Verifies the SMTP handshake without sending anything. */
+    emailTest: '/agents/email-test',
+    byId: (id: string) => `/agents/${id}`,
+    activate: (id: string) => `/agents/${id}/activate`,
+    resetPassword: (id: string) => `/agents/${id}/reset-password`
+  },
+  /**
+   * Consumer applications. An agent only ever sees their own; admin/manager see
+   * everything and may narrow with `?agent=`.
+   */
+  applications: {
+    root: '/applications',
+    stats: '/applications/stats',
+    /** The form definition: documents, site types, statuses, bill portal URL. */
+    checklist: '/applications/checklist',
+    byId: (id: string) => `/applications/${id}`,
+    submit: (id: string) => `/applications/${id}/submit`,
+    documents: (id: string) => `/applications/${id}/documents`,
+    document: (id: string, documentId: string) => `/applications/${id}/documents/${documentId}`,
+    documentReview: (id: string, documentId: string) =>
+      `/applications/${id}/documents/${documentId}/review`,
+    electricBill: (id: string) => `/applications/${id}/electric-bill`,
+    electricBillPortal: (id: string) => `/applications/${id}/electric-bill/portal`,
+    electricBillVerify: (id: string) => `/applications/${id}/electric-bill/verify`,
+    nameMatch: (id: string) => `/applications/${id}/name-match`,
+    review: (id: string) => `/applications/${id}/review`,
+    status: (id: string) => `/applications/${id}/status`,
+    signedDocument: (id: string) => `/applications/${id}/signed-document`
   },
   health: '/health'
 };

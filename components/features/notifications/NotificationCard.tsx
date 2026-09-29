@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Bell, Wrench, ExternalLink, CheckCheck, Globe, Info, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, Wrench, ExternalLink, CheckCheck, Globe, Info, AlertTriangle, FileText } from 'lucide-react';
 import { formatDateTime } from '@/lib/format';
 import type { UnifiedNotification } from '@/types/notification';
 
@@ -19,6 +20,27 @@ const SOURCE_ICON: Record<string, typeof Bell> = {
   DISCOM: AlertTriangle,
 };
 
+/**
+ * A type beats a source when the two disagree: the signed-copy notice is internal
+ * like the low-stock alerts, but a document is what it is about, and the wrench
+ * would say the wrong thing.
+ */
+const TYPE_ICON: Record<string, typeof Bell> = {
+  document: FileText,
+};
+
+const TYPE_STYLE: Record<string, string> = {
+  document: 'bg-[var(--success-tint)] text-[var(--success)]',
+};
+
+/**
+ * What to print on the source pill. `internal` is the API's word for it, not a
+ * word an agent should have to read.
+ */
+const SOURCE_LABEL: Record<string, string> = {
+  internal: 'Portal',
+};
+
 const SOURCE_STYLE: Record<string, string> = {
   internal: 'bg-[var(--primary-tint)] text-[var(--primary-active)]',
   'PM Surya Ghar': 'bg-[var(--success-tint)] text-[var(--success)]',
@@ -34,9 +56,21 @@ const PRIORITY_STYLE: Record<string, string> = {
 };
 
 export function NotificationCard({ notification, onMarkRead, compact = false }: NotificationCardProps) {
-  const Icon = SOURCE_ICON[notification.source] ?? Bell;
-  const sourceStyle = SOURCE_STYLE[notification.source] ?? 'bg-[var(--surface-muted)] text-[var(--muted)]';
+  const Icon = TYPE_ICON[notification.type] ?? SOURCE_ICON[notification.source] ?? Bell;
+  const sourceStyle =
+    TYPE_STYLE[notification.type] ??
+    SOURCE_STYLE[notification.source] ??
+    'bg-[var(--surface-muted)] text-[var(--muted)]';
   const priorityStyle = PRIORITY_STYLE[notification.priority] ?? PRIORITY_STYLE.medium;
+  const sourceLabel = SOURCE_LABEL[notification.source] ?? notification.source;
+
+  /**
+   * An in-app destination (`/applications/…`) is navigated to in the tab the
+   * reader is already in; an external feed item opens on its own site. Sending
+   * both through one `target="_blank"` anchor is how clicking a notice about your
+   * own application used to leave a second copy of the portal open behind you.
+   */
+  const isInternalLink = Boolean(notification.link?.startsWith('/'));
 
   const timeLabel = useMemo(() => {
     const dateValue = notification.publishedAt || notification.createdAt;
@@ -69,8 +103,8 @@ export function NotificationCard({ notification, onMarkRead, compact = false }: 
           {notification.message}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className={`badge-pill ${sourceStyle}`}>{notification.source}</span>
-          <span className={`badge-pill ${priorityStyle}`}>{notification.priority}</span>
+          <span className={`badge-pill ${sourceStyle}`}>{sourceLabel}</span>
+          <span className={`badge-pill ${priorityStyle} capitalize`}>{notification.priority}</span>
           <span className="text-xs text-[var(--muted-soft)]">{timeLabel}</span>
         </div>
 
@@ -87,7 +121,16 @@ export function NotificationCard({ notification, onMarkRead, compact = false }: 
                 Mark as read
               </button>
             )}
-            {notification.link && (
+            {notification.link && isInternalLink && (
+              <Link
+                href={notification.link}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Open application
+              </Link>
+            )}
+            {notification.link && !isInternalLink && (
               <a
                 href={notification.link}
                 target="_blank"

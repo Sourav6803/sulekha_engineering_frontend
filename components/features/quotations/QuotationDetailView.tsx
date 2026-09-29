@@ -216,7 +216,8 @@ export function QuotationDetailView({
             value={
               quotation.amount === null || quotation.amount === undefined
                 ? 'not recorded'
-                : `₹${formatINR(quotation.amount)}`
+                : // formatINR already prefixes the rupee sign.
+                  formatINR(quotation.amount)
             }
           />
           <InfoRow
@@ -252,7 +253,7 @@ export function QuotationDetailView({
         {quotation.items?.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-[var(--surface-muted)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
+              <thead className="table-head text-left text-xs uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="px-4 py-2">Description</th>
                   <th className="px-4 py-2">Brand / model</th>

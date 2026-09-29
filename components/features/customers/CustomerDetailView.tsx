@@ -307,7 +307,7 @@ export function CustomerDetailView({
         ) : (
           <div className="mt-6 overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-y-3 text-left text-sm">
-              <thead>
+              <thead className="table-head">
                 <tr className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-soft)]">
                   <th scope="col" className="px-4 py-2">Installation</th>
                   <th scope="col" className="px-4 py-2">Date</th>
