@@ -26,11 +26,32 @@ const NON_MESSAGE_DETAIL_KEYS = new Set([
   'code',
 ]);
 
+/**
+ * An error body that arrived as bytes.
+ *
+ * Anything requested with `responseType: 'arraybuffer'` — the quotation PDF — gets
+ * its refusal body as an ArrayBuffer rather than parsed JSON, so none of the
+ * fields below are reachable and every such failure read as a generic "Something
+ * went wrong". Decoding it is what lets the user see the server's own sentence
+ * ("The document renderer is unavailable…"). Returns null when the bytes are not
+ * JSON, which is the normal case for a successful PDF.
+ */
+const readJsonBody = (body: unknown): Record<string, unknown> | null => {
+  if (typeof ArrayBuffer === 'undefined' || !(body instanceof ArrayBuffer)) return null;
+  if (body.byteLength === 0 || body.byteLength > 64 * 1024) return null;
+
+  try {
+    return JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
     if (axiosError.response) {
-      const data = axiosError.response.data as
+      const data = (readJsonBody(axiosError.response.data) ?? axiosError.response.data) as
         | {
             message?: string;
             errors?: string[];
