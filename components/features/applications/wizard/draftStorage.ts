@@ -40,6 +40,7 @@ function normaliseForm(value: unknown): WizardForm {
     address: { ...base.address, ...(isRecord(stored.address) ? stored.address : {}) },
     deal: { ...base.deal, ...(isRecord(stored.deal) ? stored.deal : {}) },
     loan: { ...base.loan, ...(isRecord(stored.loan) ? stored.loan : {}) },
+    creditCheck: { ...base.creditCheck, ...(isRecord(stored.creditCheck) ? stored.creditCheck : {}) },
     electricBill: { ...base.electricBill, ...(isRecord(stored.electricBill) ? stored.electricBill : {}) },
     names: { ...base.names, ...(isRecord(stored.names) ? stored.names : {}) },
   } as WizardForm;

@@ -2,8 +2,9 @@
 
 import { AlertTriangle, IndianRupee } from 'lucide-react';
 import { CheckboxField, ChoiceField, SelectField, StepSection, TextAreaField, TextField } from './WizardFields';
+import { CreditCheckPanel } from '../CreditCheckPanel';
+import { numberOrNull, type WizardStepProps } from './wizardTypes';
 import type { ApplicationIntention } from '@/types/application';
-import type { WizardStepProps } from './wizardTypes';
 
 const INTENTION_OPTIONS = [
   { value: 'yes', label: 'Ready to proceed' },
@@ -202,6 +203,15 @@ export function StepDealLoan({ form, setForm, errors, disabled }: WizardStepProp
           />
         </div>
       </StepSection>
+
+      {/* Sits with the loan block and saves with this step. Optional throughout —
+          no field here is required and no submit check reads it. */}
+      <CreditCheckPanel
+        value={form.creditCheck}
+        onChange={(creditCheck) => setForm((prev) => ({ ...prev, creditCheck }))}
+        amount={numberOrNull(form.deal.proposalAmount)}
+        disabled={disabled}
+      />
     </div>
   );
 }

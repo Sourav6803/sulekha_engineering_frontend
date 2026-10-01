@@ -147,6 +147,8 @@ export interface ApplicationDocument extends BaseDocument {
   documents?: ApplicationDocumentFile[];
   electricBill?: ApplicationElectricBill;
   nameMatch?: ApplicationNameMatch | null;
+  /** The credit pre-check the agent recorded — a notice only, never a gate. */
+  creditCheck?: ApplicationCreditCheck;
 }
 
 /** One uploaded document (the array item stored on the application). */
@@ -251,6 +253,78 @@ export interface ApplicationNameMatch {
   checkedAt?: string | null;
 }
 
+/** One lender's rule for one loan slab, from GET /applications/lender-criteria. */
+export interface LenderCriteriaSlab {
+  /** The minimum score the bank states, or null when it prescribes none. */
+  minScore: number | null;
+  /** True when the bank publishes this figure itself. */
+  verified: boolean;
+  note?: string | null;
+}
+
+/** One lender row from GET /applications/lender-criteria. */
+export interface LenderCriterion {
+  /** Matches the code stored in `creditCheck.bank`. */
+  code: string;
+  name: string;
+  /** The rule for a loan at or below ₹2 lakh. */
+  upTo2L?: LenderCriteriaSlab;
+  /** The rule for a loan above ₹2 lakh. */
+  above2L?: LenderCriteriaSlab;
+  /** True when the bank onboarded under the scheme but its minimum is not recorded. */
+  unknown?: boolean;
+  source?: string;
+}
+
+/** GET /applications/lender-criteria — the rules the server itself compares against. */
+export interface LenderCriteria {
+  lenders: LenderCriterion[];
+  schemeWideRules: string[];
+  scoreMax: number;
+  slabLimit: number;
+}
+
+/** Verdict of a credit answer. Only `review` and `fail` are warnings. */
+export type CreditCheckStatus = 'pass' | 'review' | 'fail' | 'not_checked';
+
+/** How the credit score was obtained. */
+export type CreditCheckMethod = 'consumer_self_check' | 'bank_portal' | 'agent_estimate' | 'other';
+
+/**
+ * The credit answer a client may send. Every field is optional — the server owns
+ * `status`, `headline` and `detail` and recomputes them from this answer. Nothing
+ * here gates a submit.
+ */
+export interface ApplicationCreditCheckInput {
+  bank?: string | null;
+  method?: CreditCheckMethod | null;
+  score?: number | null;
+  defaultOrWriteOff?: boolean;
+  newToCredit?: boolean;
+  note?: string | null;
+}
+
+/** POST /applications/credit-check — the answer plus the cost being judged. Nothing is stored. */
+export interface CreditCheckPreviewPayload extends ApplicationCreditCheckInput {
+  amount?: number | null;
+}
+
+/** The notice the server returns for a credit answer. */
+export interface CreditCheckVerdict {
+  status: CreditCheckStatus;
+  headline: string;
+  detail: string;
+}
+
+/** The stored `creditCheck` block on an application (GET /applications/:id). */
+export interface ApplicationCreditCheck extends ApplicationCreditCheckInput {
+  status?: CreditCheckStatus;
+  headline?: string | null;
+  detail?: string | null;
+  checkedAt?: string | null;
+  checkedBy?: string | null;
+}
+
 export interface ApplicationElectricBill {
   consumerId?: string | null;
   installationNo?: string | null;
@@ -304,6 +378,7 @@ export interface ApplicationUpdatePayload {
   deal?: ApplicationDeal;
   loan?: ApplicationLoan;
   nameMatch?: ApplicationNameMatchInput;
+  creditCheck?: ApplicationCreditCheckInput;
 }
 
 export interface ApplicationNameMatchInput {

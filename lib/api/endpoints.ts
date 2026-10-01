@@ -118,6 +118,10 @@ export const ENDPOINTS = {
     stats: '/applications/stats',
     /** The form definition: documents, site types, statuses, bill portal URL. */
     checklist: '/applications/checklist',
+    /** The credit rules per lender, so the client shows the numbers the server uses. */
+    lenderCriteria: '/applications/lender-criteria',
+    /** The credit verdict before an application exists — nothing is stored. */
+    creditCheck: '/applications/credit-check',
     byId: (id: string) => `/applications/${id}`,
     submit: (id: string) => `/applications/${id}/submit`,
     documents: (id: string) => `/applications/${id}/documents`,

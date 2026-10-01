@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, RotateCcw, Search, ShieldAlert } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, RotateCcw, Search, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Pagination } from '@/components/shared/Pagination';
 import { ApplicationTable } from '@/components/features/applications/ApplicationTable';
+import { CreditPreCheck } from '@/components/features/applications/CreditPreCheck';
 import {
   APPLICATION_STATUS_FALLBACK,
   siteTypeLabelsFromChecklist,
@@ -21,6 +23,7 @@ import type { SortOrder } from '@/components/shared/DataTable';
 import type { ApplicationChecklist, ApplicationListQuery, ApplicationStatus } from '@/types/application';
 
 export default function ApplicationsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const role = user?.role;
   const allowed = canViewApplications(role);
@@ -43,6 +46,7 @@ export default function ApplicationsPage() {
   });
   const [searchInput, setSearchInput] = useState('');
   const [checklist, setChecklist] = useState<ApplicationChecklist | null>(null);
+  const [preCheckOpen, setPreCheckOpen] = useState(false);
 
   // Debounced search → query.
   useEffect(() => {
@@ -117,9 +121,18 @@ export default function ApplicationsPage() {
         </div>
 
         {canFileApplication && (
-          <Link href="/applications/new" className="brand-button inline-flex items-center gap-1.5 px-4 py-2 text-sm">
-            <Plus className="h-4 w-4" /> New application
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="neutral-button inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+              onClick={() => setPreCheckOpen(true)}
+            >
+              <ShieldCheck className="h-4 w-4" /> Credit check
+            </button>
+            <Link href="/applications/new" className="brand-button inline-flex items-center gap-1.5 px-4 py-2 text-sm">
+              <Plus className="h-4 w-4" /> New application
+            </Link>
+          </div>
         )}
       </div>
 
@@ -207,6 +220,15 @@ export default function ApplicationsPage() {
       <div className="px-4">
         <Pagination pagination={pagination} onPageChange={(page) => setQuery((prev) => ({ ...prev, page }))} />
       </div>
+
+      <CreditPreCheck
+        open={preCheckOpen}
+        onClose={() => setPreCheckOpen(false)}
+        onContinue={() => {
+          setPreCheckOpen(false);
+          router.push('/applications/new');
+        }}
+      />
     </PageContainer>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Copy, MailCheck, Plus, RotateCcw, Search, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, Copy, MailCheck, Plus, RotateCcw, Search, ShieldAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Modal } from '@/components/shared/Modal';
 import { Pagination } from '@/components/shared/Pagination';
+import { GuideSheet } from '@/components/features/applications/GuideSheet';
 import { AgentTable } from '@/components/features/agents/AgentTable';
 import { AGENT_STATUS } from '@/components/features/agents/agentStatus';
 import { useAgents } from '@/hooks/useAgents';
@@ -66,6 +67,7 @@ export default function AgentsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [emailStatus, setEmailStatus] = useState<AgentEmailStatus | null>(null);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   // ---- Loading ----
   useEffect(() => {
@@ -307,9 +309,18 @@ export default function AgentsPage() {
             generated for you and the agent sets their own on first sign in.
           </p>
         </div>
-        <button type="button" className="brand-button inline-flex items-center gap-1.5 px-4 py-2 text-sm" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Create agent
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="neutral-button inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+            onClick={() => setGuideOpen(true)}
+          >
+            <BookOpen className="h-4 w-4" /> Agent guide
+          </button>
+          <button type="button" className="brand-button inline-flex items-center gap-1.5 px-4 py-2 text-sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Create agent
+          </button>
+        </div>
       </div>
 
       {/* Welcome emails off → the admin has to hand credentials over by hand */}
@@ -595,6 +606,8 @@ export default function AgentsPage() {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleting(null)}
       />
+
+      <GuideSheet open={guideOpen} onClose={() => setGuideOpen(false)} />
     </PageContainer>
   );
 }

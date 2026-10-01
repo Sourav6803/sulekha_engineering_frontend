@@ -5,7 +5,34 @@ import type {
   ApplicationNameMatchInput,
   ApplicationSiteType,
   ApplicationUpdatePayload,
+  CreditCheckMethod,
 } from '@/types/application';
+
+/**
+ * The credit pre-check as the panel edits it. Same shape as the API answer, but
+ * `score` is a string while the agent types ("" is "not filled yet", distinct
+ * from 0) — the same convention as the other numeric wizard fields.
+ */
+export interface CreditCheckValue {
+  bank: string;
+  method: CreditCheckMethod;
+  score: string;
+  defaultOrWriteOff: boolean;
+  newToCredit: boolean;
+  note: string;
+}
+
+/** Blank credit answers — the default is the method the checklist assumes. */
+export function emptyCreditCheckValue(): CreditCheckValue {
+  return {
+    bank: '',
+    method: 'consumer_self_check',
+    score: '',
+    defaultOrWriteOff: false,
+    newToCredit: false,
+    note: '',
+  };
+}
 
 /** Props every step screen receives from the wizard shell. */
 export interface WizardStepProps {
@@ -61,6 +88,11 @@ export interface WizardForm {
     consumerInformed: boolean;
     remark: string;
   };
+  /**
+   * The credit pre-check. Optional by design — no field here is required and no
+   * step gate reads it; a doubtful score is only ever a notice.
+   */
+  creditCheck: CreditCheckValue;
 
   // ---- Step 5: electricity bill ----
   electricBill: {
@@ -119,6 +151,7 @@ export function emptyWizardForm(): WizardForm {
       consumerInformed: false,
       remark: '',
     },
+    creditCheck: emptyCreditCheckValue(),
 
     electricBill: { consumerId: '', installationNo: '' },
 
@@ -138,6 +171,17 @@ export const numberOrNull = (value: string): number | null => {
   if (!trimmed) return null;
   const numeric = Number(trimmed);
   return Number.isFinite(numeric) ? numeric : null;
+};
+
+/**
+ * A credit score the API will accept (0–900), or null. Out-of-range values are
+ * dropped rather than sent, so a typo can never make the credit answer fail
+ * validation and hold up the step.
+ */
+export const usableScoreOrNull = (value: string): number | null => {
+  const numeric = numberOrNull(value);
+  if (numeric === null) return null;
+  return numeric >= 0 && numeric <= 900 ? numeric : null;
 };
 
 /** Hydrate the form from a stored application (used after create / a refresh). */
@@ -180,6 +224,14 @@ export function formFromApplication(application: ApplicationDocument): WizardFor
       monthlyEmi: application.loan?.monthlyEmi != null ? String(application.loan.monthlyEmi) : '',
       consumerInformed: Boolean(application.loan?.consumerInformed),
       remark: application.loan?.remark ?? '',
+    },
+    creditCheck: {
+      bank: application.creditCheck?.bank ?? '',
+      method: application.creditCheck?.method ?? 'consumer_self_check',
+      score: application.creditCheck?.score != null ? String(application.creditCheck.score) : '',
+      defaultOrWriteOff: Boolean(application.creditCheck?.defaultOrWriteOff),
+      newToCredit: Boolean(application.creditCheck?.newToCredit),
+      note: application.creditCheck?.note ?? '',
     },
 
     electricBill: {
@@ -248,6 +300,16 @@ export function buildStepPayload(step: number, form: WizardForm): ApplicationUpd
           monthlyEmi: numberOrNull(form.loan.monthlyEmi),
           consumerInformed: form.loan.consumerInformed,
           remark: trimOrNull(form.loan.remark),
+        },
+        // Saved with the deal like the other fields. Every value is optional and
+        // the score is range-guarded, so this can never block the step.
+        creditCheck: {
+          bank: trimOrNull(form.creditCheck.bank),
+          method: form.creditCheck.method,
+          score: usableScoreOrNull(form.creditCheck.score),
+          defaultOrWriteOff: form.creditCheck.defaultOrWriteOff,
+          newToCredit: form.creditCheck.newToCredit,
+          note: trimOrNull(form.creditCheck.note),
         },
       };
 

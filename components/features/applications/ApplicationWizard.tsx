@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, History, Loader2, Save, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, History, Loader2, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { GuideSheet } from './GuideSheet';
 import { isAgentEditableStatus } from '@/components/features/applications/applicationDisplay';
 import {
   clearStoredWizardDraft,
@@ -123,6 +124,7 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
   const [restoreDismissed, setRestoreDismissed] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discarding, setDiscarding] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   /** Set once a submit succeeds so no effect re-persists the cleared entry. */
   const submittedRef = useRef(false);
 
@@ -679,23 +681,32 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
           <p className="min-w-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary-active)]">
             Step {step + 1} of {WIZARD_STEPS.length}
           </p>
-          <p className="shrink-0 text-[11px] text-[var(--muted)]">
-            {saving ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving…
-              </span>
-            ) : dirty ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Save className="h-3 w-3" /> Unsaved changes
-              </span>
-            ) : applicationId ? (
-              <span className="inline-flex items-center gap-1.5 text-[var(--success)]">
-                <CheckCircle2 className="h-3 w-3" /> Draft saved
-              </span>
-            ) : (
-              <span>Not saved yet</span>
-            )}
-          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <p className="text-[11px] text-[var(--muted)]">
+              {saving ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                </span>
+              ) : dirty ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Save className="h-3 w-3" /> Unsaved changes
+                </span>
+              ) : applicationId ? (
+                <span className="inline-flex items-center gap-1.5 text-[var(--success)]">
+                  <CheckCircle2 className="h-3 w-3" /> Draft saved
+                </span>
+              ) : (
+                <span>Not saved yet</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => setGuideOpen(true)}
+              className="neutral-button inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px]"
+            >
+              <BookOpen className="h-3.5 w-3.5" /> Agent guide
+            </button>
+          </div>
         </div>
 
         <ol className="-mx-1 mt-3 flex snap-x gap-1.5 overflow-x-auto pb-1">
@@ -976,6 +987,8 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
         onConfirm={() => void handleDiscard()}
         onCancel={() => setDiscardOpen(false)}
       />
+
+      <GuideSheet open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

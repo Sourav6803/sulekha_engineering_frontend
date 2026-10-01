@@ -28,6 +28,9 @@ import type {
   ApplicationSubmitIssue,
   ApplicationSubmitPayload,
   ApplicationUpdatePayload,
+  CreditCheckPreviewPayload,
+  CreditCheckVerdict,
+  LenderCriteria,
 } from '@/types/application';
 
 /**
@@ -57,6 +60,30 @@ export const applicationsApi = {
   async checklist() {
     const { data } = await axiosClient.get<ApiResponse<ApplicationChecklist>>(
       ENDPOINTS.applications.checklist
+    );
+    return data;
+  },
+
+  /**
+   * GET /applications/lender-criteria — the credit rules per lender. Read only, so
+   * the client never keeps a second copy of the numbers the server compares against.
+   */
+  async lenderCriteria() {
+    const { data } = await axiosClient.get<ApiResponse<LenderCriteria>>(
+      ENDPOINTS.applications.lenderCriteria
+    );
+    return data;
+  },
+
+  /**
+   * POST /applications/credit-check — the verdict for a consumer's answers before
+   * an application exists. Nothing is stored and nothing is required: every field
+   * is optional and a doubtful score only produces a notice.
+   */
+  async creditCheckPreview(payload: CreditCheckPreviewPayload) {
+    const { data } = await axiosClient.post<ApiResponse<CreditCheckVerdict>>(
+      ENDPOINTS.applications.creditCheck,
+      payload
     );
     return data;
   },
