@@ -1,10 +1,10 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { Sun, Zap, Shield, Users, TrendingUp, MapPin, ChevronRight } from 'lucide-react';
+import { Sun, Zap, Shield, Users, TrendingUp, MapPin, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 
 const HERO_SLIDES = [
@@ -44,28 +44,62 @@ const FEATURES = [
   { title: 'Expert Installation', description: 'Certified technicians', icon: Users },
 ];
 
+/** Where a signed-in visitor lands when the URL does not ask for somewhere else. */
+const AUTHENTICATED_HOME = '/dashboard';
+
+/**
+ * The post-login destination arrives in the URL, so it is only accepted as an
+ * in-app path.
+ *
+ * `router.replace()` would have treated anything as a path, but the value is now
+ * handed to the browser: "//example.com" is a protocol-relative URL, so passing it
+ * through would make this an open redirect that can be used to send a just-signed-in
+ * user to another site.
+ */
+const safeRedirectPath = (candidate: string | null) => {
+  if (!candidate) return AUTHENTICATED_HOME;
+  if (!candidate.startsWith('/') || candidate.startsWith('//')) return AUTHENTICATED_HOME;
+  return candidate;
+};
+
+/** Long enough for the confirmation toast to be read before the console loads. */
+const REDIRECT_DELAY_MS = 500;
+
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectPath = searchParams.get('redirect') || '/dashboard';
+  const redirectPath = safeRedirectPath(searchParams.get('redirect'));
 
   const { login, error, loading, isAuthenticated } = useAuth();
   const [activeSlide, setActiveSlide] = useState(0);
   const [form, setForm] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [loginSuccess, setLoginSuccess] = useState(false);
 
+  /**
+   * Signing in has to leave through a document request, not `router.replace`.
+   *
+   * A client-side navigation can be answered from the router's cache instead of
+   * the server: the public landing page links to /dashboard, and while signed out
+   * those prefetches are answered by the proxy with a redirect back to /login. That
+   * cached answer outlives the sign-in, so `router.replace('/dashboard')` returned
+   * to this screen — and because `isAuthenticated` was by then true, this effect ran
+   * again and replaced again, which is exactly why the URL changed while the page
+   * stayed on the login form until a refresh. A document request carries the cookie
+   * that was just written and cannot be answered from that cache; the proxy then
+   * sees it and serves the console.
+   *
+   * `replace` rather than `assign` so the sign-in screen does not stay in the
+   * history stack behind the console.
+   */
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace(redirectPath);
-    }
-  }, [isAuthenticated, redirectPath, router]);
+    if (!isAuthenticated) return;
 
-  useEffect(() => {
-    if (!loginSuccess) return;
-    const timer = setTimeout(() => router.replace(redirectPath), 80);
+    const timer = setTimeout(() => {
+      window.location.replace(redirectPath);
+    }, REDIRECT_DELAY_MS);
+
     return () => clearTimeout(timer);
-  }, [loginSuccess, redirectPath, router]);
+  }, [isAuthenticated, redirectPath]);
 
   useEffect(() => {
     if (!error) return;
@@ -97,7 +131,8 @@ export default function LoginPage() {
     try {
       await login({ email: form.email.trim(), password: form.password.trim() });
       toast.success('Welcome back', { description: 'You are now signed in to the Sulekha Engineering console.' });
-      setLoginSuccess(true);
+      // The redirect is not fired from here: `login()` marks the session, and the
+      // effect above owns leaving the screen, so the two can never race.
     } catch {
       // useAuth.login() sets its own `error` state on failure;
       // the useEffect watching `error` handles the single toast.
@@ -305,15 +340,34 @@ export default function LoginPage() {
                   <label htmlFor="password" className="form-label">
                     Password
                   </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={form.password}
-                    onChange={(event) => setForm({ ...form, password: event.target.value })}
-                    placeholder="Enter your password"
-                    className="form-input"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(event) => setForm({ ...form, password: event.target.value })}
+                      placeholder="Enter your password"
+                      // `pr-12` keeps the typed password clear of the toggle, which
+                      // sits over the field rather than beside it.
+                      className="form-input pr-12"
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPassword}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-[var(--radius-sm)] text-[var(--muted)] transition-colors hover:text-[var(--foreground)] focus-visible:text-[var(--foreground)] focus-visible:outline-none"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <button type="submit" className="brand-button w-full" disabled={loading}>
