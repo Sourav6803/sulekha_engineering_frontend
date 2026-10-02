@@ -414,6 +414,9 @@ export function QuotationDetailView({
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-[var(--foreground)]">Document</h3>
         <QuotationPreviewFrame
+          // Keyed by quotation so opening another one starts from a clean slate
+          // instead of reusing the preview and its loaded document.
+          key={quotation._id}
           quotationId={quotation._id}
           quotationNo={quotation.quotationNo}
           customerName={quotation.customerName}

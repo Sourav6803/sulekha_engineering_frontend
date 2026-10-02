@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Download, Info, Loader2, Printer, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { quotationsApi } from '@/lib/api/quotations.api';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { PdfCanvasViewer } from './PdfCanvasViewer';
 
 interface QuotationPreviewFrameProps {
   quotationId: string;
@@ -20,6 +21,36 @@ const pdfFileName = (quotationNo: string, customerName: string) =>
   `${quotationNo.replace(/[/\\]/g, '-')}-${customerName}`.replace(/[^\w.\- ]+/g, '').slice(0, 120) + '.pdf';
 
 /**
+ * One attempt at showing the document, resolved before it is committed to state.
+ *
+ * Fetching and committing are kept apart on purpose. Committing all four outcomes
+ * in one go cannot leave the box in a state that was never true — no frame where
+ * the loader has gone but nothing has replaced it — and it keeps the effect free
+ * of state updates, which is what an effect that starts a request should be.
+ */
+type PdfAttempt =
+  | { kind: 'pdf'; data: ArrayBuffer }
+  | { kind: 'print'; html: string; reason: string }
+  | { kind: 'error'; message: string };
+
+/**
+ * The print view, as an attempt.
+ *
+ * Shared by the two ways the PDF can fail: the server refusing the PDF route (503
+ * when it has no browser to print with), and this device being unable to draw the
+ * bytes. Both leave the document readable, because the print view is the same
+ * template as HTML.
+ */
+const printViewAttempt = async (quotationId: string, reason: unknown): Promise<PdfAttempt> => {
+  try {
+    const html = await quotationsApi.printHtml(quotationId, false);
+    return { kind: 'print', html, reason: handleApiError(reason) };
+  } catch {
+    return { kind: 'error', message: handleApiError(reason) };
+  }
+};
+
+/**
  * The A4 preview.
  *
  * The PDF and the print view come from the same backend template, so what is
@@ -27,10 +58,17 @@ const pdfFileName = (quotationNo: string, customerName: string) =>
  * who lays it out: the PDF is printed by headless Chrome on the server, the print
  * view by the reader's own browser.
  *
- * That difference is why this falls back rather than failing. A server without a
- * browser — a host where Chrome could not be installed — answers the PDF route with
- * 503 `PDF_RENDERER_UNAVAILABLE`, and an empty box would be a worse answer than the
- * markup the backend can still produce.
+ * The PDF is drawn onto canvases by `PdfCanvasViewer`, not handed to the browser in
+ * a frame. Desktop browsers have a built-in PDF viewer and would show a frame
+ * happily, which is why the frame went unnoticed for so long; Android's Chrome has
+ * none, so a frame there shows only its own file-name-and-Open-button placeholder.
+ * That component carries the full reasoning.
+ *
+ * That difference is why this falls back rather than failing, in two places. A
+ * server without a browser — a host where Chrome could not be installed — answers
+ * the PDF route with 503 `PDF_RENDERER_UNAVAILABLE`; and a device that cannot run
+ * the renderer fails while drawing. Either way the print view is shown, because an
+ * empty box would be a worse answer than the markup the backend can still produce.
  *
  * The print window is opened synchronously on click (before any await) because
  * browsers block popups opened after an async gap.
@@ -42,60 +80,68 @@ export function QuotationPreviewFrame({
   canDownload = false,
   hideToolbar = false,
 }: QuotationPreviewFrameProps) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [printHtml, setPrintHtml] = useState<string | null>(null);
   const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const objectUrlRef = useRef<string | null>(null);
-
-  const releaseObjectUrl = useCallback(() => {
-    if (!objectUrlRef.current) return;
-    URL.revokeObjectURL(objectUrlRef.current);
-    objectUrlRef.current = null;
+  /** Apply one finished attempt. Every state the box depends on moves together. */
+  const commit = useCallback((attempt: PdfAttempt) => {
+    setPdfData(attempt.kind === 'pdf' ? attempt.data : null);
+    setPrintHtml(attempt.kind === 'print' ? attempt.html : null);
+    setFallbackReason(attempt.kind === 'print' ? attempt.reason : null);
+    setError(attempt.kind === 'error' ? attempt.message : null);
+    setLoading(false);
   }, []);
 
-  const load = useCallback(async () => {
+  /** Fetch the PDF, falling back to the print view if the server will not print it. */
+  const request = useCallback(async (): Promise<PdfAttempt> => {
+    try {
+      const data = await quotationsApi.downloadPdf(quotationId, true);
+      return { kind: 'pdf', data };
+    } catch (pdfError) {
+      return printViewAttempt(quotationId, pdfError);
+    }
+  }, [quotationId]);
+
+  /**
+   * The document could not be drawn on this device. Swap in the print view, which
+   * clears `pdfData` and so takes the viewer out of the render below.
+   */
+  const showPrintView = useCallback(
+    async (reason: unknown) => commit(await printViewAttempt(quotationId, reason)),
+    [quotationId, commit]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // The state update lives after the `await`, not in the effect body: an effect
+    // that sets state as it runs causes a cascading render.
+    void (async () => {
+      const attempt = await request();
+      if (!cancelled) commit(attempt);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request, commit]);
+
+  /**
+   * Try again. It restores the loading state first, which is safe here because a
+   * click is not an effect — and it is the reason the effect above does not have to.
+   */
+  const retry = useCallback(() => {
     setLoading(true);
     setError(null);
     setFallbackReason(null);
-
-    try {
-      const buffer = await quotationsApi.downloadPdf(quotationId, true);
-      const objectUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }));
-
-      // Replace any previous blob before this one is shown, so a retry cannot
-      // leak the url it supersedes.
-      releaseObjectUrl();
-      objectUrlRef.current = objectUrl;
-
-      setPdfUrl(objectUrl);
-      setPrintHtml(null);
-    } catch (pdfError) {
-      releaseObjectUrl();
-      setPdfUrl(null);
-
-      try {
-        const markup = await quotationsApi.printHtml(quotationId, false);
-        setPrintHtml(markup);
-        setFallbackReason(handleApiError(pdfError));
-      } catch {
-        setPrintHtml(null);
-        setError(handleApiError(pdfError));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [quotationId, releaseObjectUrl]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  // Revoke on unmount, and when a retry swaps in a new blob.
-  useEffect(() => releaseObjectUrl, [releaseObjectUrl]);
+    setPrintHtml(null);
+    setPdfData(null);
+    void (async () => commit(await request()))();
+  }, [request, commit]);
 
   const handleDownload = async () => {
     setBusy(true);
@@ -176,8 +222,7 @@ export function QuotationPreviewFrame({
         <div className="flex items-start gap-2 rounded-lg border border-[var(--border-soft)] bg-white px-3 py-2 text-xs text-[var(--muted)]">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--warning)]" />
           <span>
-            Showing the print view — the PDF could not be rendered on this server. {fallbackReason}{' '}
-            Printing is unaffected.
+            Showing the print view instead of the PDF. {fallbackReason} Printing is unaffected.
           </span>
         </div>
       )}
@@ -188,7 +233,7 @@ export function QuotationPreviewFrame({
           <p className="text-sm text-[var(--error)]">{error}</p>
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={retry}
             className="neutral-button inline-flex items-center gap-1.5 px-3 py-1.5 text-sm"
           >
             <RefreshCw className="h-4 w-4" /> Try again
@@ -196,18 +241,18 @@ export function QuotationPreviewFrame({
         </div>
       )}
 
-      {!loading && !error && pdfUrl && (
-        <div className="overflow-hidden rounded-xl border border-[var(--border-soft)] bg-white shadow-sm">
-          <iframe src={pdfUrl} title={`Quotation ${quotationNo}`} className="h-[900px] w-full" />
-        </div>
+      {!loading && !error && pdfData && (
+        <PdfCanvasViewer data={pdfData} onFailure={showPrintView} />
       )}
 
-      {!loading && !error && !pdfUrl && printHtml && (
+      {!loading && !error && !pdfData && printHtml && (
         <div className="overflow-hidden rounded-xl border border-[var(--border-soft)] bg-white shadow-sm">
           <iframe
             srcDoc={printHtml}
             title={`Quotation ${quotationNo}`}
-            className="h-[900px] w-full"
+            // Shorter on a phone: the A4 sheet scrolls inside rather than pushing
+            // the rest of the page a screen and a half further down.
+            className="h-[70vh] w-full sm:h-[900px]"
           />
         </div>
       )}
