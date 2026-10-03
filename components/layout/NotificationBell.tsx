@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Bell, PackageX, Wrench, Truck, FileText, ClipboardList } from "lucide-react";
+import { Bell, PackageX, Wrench, Truck, FileText, ClipboardList, ExternalLink } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import { resolveNotificationTarget } from "@/lib/notifications/target";
 import type { UnifiedNotification } from "@/types/notification";
 
 const ICONS: Record<string, typeof PackageX> = {
@@ -32,16 +33,40 @@ const ICON_STYLES: Record<string, string> = {
   application: "bg-[var(--primary-tint)] text-[var(--primary-active)]",
 };
 
+/** How many the dropdown lists. The rest are a click away on the notifications page. */
+const BELL_LIST_LIMIT = 8;
+
 export function NotificationBell() {
   const isOpen = useUIStore((state) => state.notificationMenuOpen);
   const setOpen = useUIStore((state) => state.setNotificationMenuOpen);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const { notifications, unreadCount } = useNotifications();
+  const { notifications, unreadCount, loading, error, fetchUnified, fetchUnreadCount } =
+    useNotifications();
 
   const recentNotifications = useMemo(() => {
-    return notifications.slice(0, 8);
+    return notifications.slice(0, BELL_LIST_LIMIT);
   }, [notifications]);
+
+  /*
+   * The bell used to show a count and never a list.
+   *
+   * `useNotifications` reads the unread count on mount and nothing else, so
+   * `notifications` stayed empty in here and the dropdown answered "No
+   * notifications yet" however many the badge claimed. The list is loaded here
+   * instead: once on mount, and again whenever the menu is opened — so what is
+   * listed is what the server holds at the moment it is looked at, not what it
+   * held when the page was loaded.
+   */
+  useEffect(() => {
+    void fetchUnified({ page: 1, limit: BELL_LIST_LIMIT });
+  }, [fetchUnified]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void fetchUnified({ page: 1, limit: BELL_LIST_LIMIT });
+    void fetchUnreadCount();
+  }, [isOpen, fetchUnified, fetchUnreadCount]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -96,7 +121,20 @@ export function NotificationBell() {
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {recentNotifications.length === 0 ? (
+            {error && recentNotifications.length === 0 ? (
+              /*
+               * Say which it is. An empty box that could equally mean "nothing has
+               * happened" or "the request failed" is how a broken feed goes
+               * unnoticed — it is what made this one look like an empty inbox.
+               */
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-[var(--error)]">{error}</p>
+              </div>
+            ) : loading && recentNotifications.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-[var(--muted)]">Loading notifications…</p>
+              </div>
+            ) : recentNotifications.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <p className="text-sm text-[var(--muted)]">No notifications yet</p>
               </div>
@@ -104,9 +142,13 @@ export function NotificationBell() {
               recentNotifications.map((item: UnifiedNotification) => {
                 const Icon = ICONS[item.type] ?? Bell;
                 const iconStyle = ICON_STYLES[item.type] ?? ICON_STYLES.system;
-                // A notification that points at a screen in this app opens it;
-                // only the external scheme items link away.
-                const inApp = item.link?.startsWith('/') ?? false;
+                /*
+                 * Resolved rather than read off `link` directly. The old test here
+                 * was "does it start with a slash", and everything that failed it —
+                 * the MNRE / PIB / DISCOM scheme updates, which carry a full URL —
+                 * fell through to a plain div with no handler at all.
+                 */
+                const target = resolveNotificationTarget(item);
 
                 const rowClass = `flex gap-3 border-b border-[var(--border-soft)] px-4 py-3 last:border-0 ${
                   !item.isRead ? "bg-[var(--surface-muted)]/30" : ""
@@ -117,7 +159,13 @@ export function NotificationBell() {
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm leading-snug text-[var(--foreground)] line-clamp-1">{item.title}</p>
+                      <p className="flex items-center gap-1.5 text-sm leading-snug text-[var(--foreground)]">
+                        <span className="line-clamp-1">{item.title}</span>
+                        {target?.external ? (
+                          // Says "this leaves the app" before the tab opens.
+                          <ExternalLink className="h-3 w-3 shrink-0 text-[var(--muted-soft)]" aria-hidden="true" />
+                        ) : null}
+                      </p>
                       <p className="mt-0.5 text-xs text-[var(--muted-soft)] line-clamp-1">{item.message}</p>
                       <p className="mt-1 text-xs text-[var(--muted-soft)]">
                         {new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -129,19 +177,40 @@ export function NotificationBell() {
                   </>
                 );
 
-                return inApp ? (
+                // Nothing to open: the row stays inert rather than pretending to be
+                // a link, which is the honest answer for a staff-wide notice.
+                if (!target) {
+                  return (
+                    <div key={item._id} className={rowClass}>
+                      {content}
+                    </div>
+                  );
+                }
+
+                if (target.external) {
+                  return (
+                    <a
+                      key={item._id}
+                      href={target.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setOpen(false)}
+                      className={`${rowClass} transition-colors hover:bg-[var(--surface-muted)]`}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
+
+                return (
                   <Link
                     key={item._id}
-                    href={item.link as string}
+                    href={target.href}
                     onClick={() => setOpen(false)}
                     className={`${rowClass} transition-colors hover:bg-[var(--surface-muted)]`}
                   >
                     {content}
                   </Link>
-                ) : (
-                  <div key={item._id} className={rowClass}>
-                    {content}
-                  </div>
                 );
               })
             )}

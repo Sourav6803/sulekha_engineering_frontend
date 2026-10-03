@@ -1,4 +1,4 @@
-import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { ApiListResponse, ApiResponse } from '@/types/api';
 import type { PurchaseDocument } from '@/types/purchase';
 import axiosClient from './axiosClient';
 import { ENDPOINTS } from './endpoints';
@@ -16,13 +16,14 @@ export interface PurchaseListQuery {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface CreatePurchaseDto extends Partial<PurchaseDocument> {}
-export interface UpdatePurchaseDto extends Partial<PurchaseDocument> {}
+export type CreatePurchaseDto = Partial<PurchaseDocument>;
+export type UpdatePurchaseDto = Partial<PurchaseDocument>;
 
 export const purchasesApi = {
   list: (query?: PurchaseListQuery) =>
     axiosClient
-      .get<ApiResponse<PaginatedResponse<PurchaseDocument>>>(ENDPOINTS.purchases.root, { params: query })
+      // `ApiListResponse`: the array is `data`, with paging metadata beside it.
+      .get<ApiListResponse<PurchaseDocument>>(ENDPOINTS.purchases.root, { params: query })
       .then((response) => response.data),
 
   create: (payload: CreatePurchaseDto) =>

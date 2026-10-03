@@ -1,12 +1,17 @@
-import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { ApiListResponse, ApiResponse } from '@/types/api';
 import type { NotificationDocument, NotificationQuery, UnifiedNotification } from '@/types/notification';
 import axiosClient from './axiosClient';
 import { ENDPOINTS } from './endpoints';
 
 export const notificationsApi = {
+  /*
+   * `ApiListResponse`, not `ApiResponse<{ items }>`: this backend puts the array in
+   * `data` itself and the paging metadata beside it. See the note on that type —
+   * the nested shape this used to declare is what made both feeds read as empty.
+   */
   list: (query?: NotificationQuery) =>
     axiosClient
-      .get<ApiResponse<PaginatedResponse<NotificationDocument>>>(ENDPOINTS.notifications.root, { params: query })
+      .get<ApiListResponse<NotificationDocument>>(ENDPOINTS.notifications.root, { params: query })
       .then((response) => response.data),
 
   getUnreadCount: () =>
@@ -23,6 +28,6 @@ export const notificationsApi = {
 
   getUnified: (query?: NotificationQuery) =>
     axiosClient
-      .get<ApiResponse<{ data: UnifiedNotification[]; pagination?: { page: number; limit: number; total: number; pages: number } }>>(ENDPOINTS.notifications.unified, { params: query })
+      .get<ApiListResponse<UnifiedNotification>>(ENDPOINTS.notifications.unified, { params: query })
       .then((response) => response.data),
 };

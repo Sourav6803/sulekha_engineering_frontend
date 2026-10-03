@@ -6,7 +6,13 @@ export type NotificationType =
   | 'scheme'
   | 'external'
   /** Office filed a signed quotation / agreement — sent to one agent only. */
-  | 'document';
+  | 'document'
+  /**
+   * A field agent filed an application, and the office has to pick it up. The
+   * model has carried this since the beginning; it was missing here, so the one
+   * notification kind the office receives most was unrepresentable in the client.
+   */
+  | 'application';
 export type NotificationSource = 'internal' | 'PM Surya Ghar' | 'MNRE' | 'PIB' | 'DISCOM';
 export type NotificationCategory = 'scheme_update' | 'subsidy' | 'registration' | 'general' | 'alert' | 'info' | 'warning';
 export type NotificationPriority = 'low' | 'medium' | 'high';

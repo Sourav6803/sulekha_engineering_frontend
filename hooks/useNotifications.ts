@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { notificationsApi } from '@/lib/api/notifications.api';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import type { NotificationDocument, NotificationQuery, UnifiedNotification } from '@/types/notification';
+import type { NotificationQuery, UnifiedNotification } from '@/types/notification';
 import type { PaginationInfo } from '@/types/api';
 
 export function useNotifications() {
@@ -17,10 +17,11 @@ export function useNotifications() {
 
     try {
       const result = await notificationsApi.list(query);
-      const items = Array.isArray((result.data as { items?: unknown[] })?.items) ? (result.data as { items: NotificationDocument[] }).items : [];
+      // The array is `data` itself, not `data.items` — see ApiListResponse.
+      const items = Array.isArray(result.data) ? result.data : [];
       setNotifications(items.map(n => ({ ...n, publishedAt: n.createdAt })));
       setPagination(
-        (result.data as { pagination?: PaginationInfo }).pagination ?? {
+        result.pagination ?? {
           page: query?.page ?? 1,
           limit: query?.limit ?? 20,
           total: items.length,
@@ -43,11 +44,13 @@ export function useNotifications() {
 
     try {
       const result = await notificationsApi.getUnified(query);
-      const raw = result.data as { data?: UnifiedNotification[]; pagination?: PaginationInfo };
-      const items = Array.isArray(raw.data) ? raw.data : [];
+      // As above: `data` is the feed. Reading `data.data` here returned undefined for
+      // every call, so the feed was always empty while the unread count — which is
+      // read correctly — still showed on the bell.
+      const items = Array.isArray(result.data) ? result.data : [];
       setNotifications(items);
       setPagination(
-        raw.pagination ?? {
+        result.pagination ?? {
           page: query?.page ?? 1,
           limit: query?.limit ?? 20,
           total: items.length,
@@ -125,6 +128,22 @@ export function useNotifications() {
     return () => {
       active = false;
     };
+  }, [fetchUnreadCount]);
+
+  /*
+   * Re-read the count when the tab comes back to the foreground, so a notification
+   * filed while the window was in the background shows on the badge without a
+   * reload. Deliberately not a timer: being right whenever it is looked at is
+   * enough, and an interval would keep every open tab talking to the server all
+   * day for a number nobody is watching.
+   */
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void fetchUnreadCount();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [fetchUnreadCount]);
 
   const unreadNotifications = useMemo(

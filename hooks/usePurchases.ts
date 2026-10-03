@@ -14,7 +14,10 @@ export function usePurchases() {
 
     try {
       const result = await purchasesApi.list(query);
-      setData(result.data.items ?? []);
+      // The array is `data` itself, not `data.items` — see ApiListResponse. Reading
+      // the nested shape returned undefined for every call, so this list was
+      // silently empty.
+      setData(Array.isArray(result.data) ? result.data : []);
       return result;
     } catch (err) {
       setError((err as Error).message ?? 'Failed to fetch purchases');

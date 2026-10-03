@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Bell, Wrench, ExternalLink, CheckCheck, Globe, Info, AlertTriangle, FileText } from 'lucide-react';
+import { Bell, Wrench, ExternalLink, CheckCheck, Globe, Info, AlertTriangle, ArrowUpRight, FileText } from 'lucide-react';
 import { formatDateTime } from '@/lib/format';
+import { notificationActionLabel, resolveNotificationTarget } from '@/lib/notifications/target';
 import type { UnifiedNotification } from '@/types/notification';
 
 interface NotificationCardProps {
@@ -65,12 +66,16 @@ export function NotificationCard({ notification, onMarkRead, compact = false }: 
   const sourceLabel = SOURCE_LABEL[notification.source] ?? notification.source;
 
   /**
-   * An in-app destination (`/applications/…`) is navigated to in the tab the
-   * reader is already in; an external feed item opens on its own site. Sending
-   * both through one `target="_blank"` anchor is how clicking a notice about your
-   * own application used to leave a second copy of the portal open behind you.
+   * Where this notification leads, if anywhere.
+   *
+   * An in-app destination is navigated to in the tab the reader is already in; an
+   * external feed item opens on its own site. Sending both through one
+   * `target="_blank"` anchor is how clicking a notice about your own application
+   * used to leave a second copy of the portal open behind you. The same resolver
+   * drives the header bell, so the two surfaces can no longer disagree about what
+   * is clickable.
    */
-  const isInternalLink = Boolean(notification.link?.startsWith('/'));
+  const target = resolveNotificationTarget(notification);
 
   const timeLabel = useMemo(() => {
     const dateValue = notification.publishedAt || notification.createdAt;
@@ -110,7 +115,13 @@ export function NotificationCard({ notification, onMarkRead, compact = false }: 
 
         {/* Actions */}
         {!compact && (
-          <div className="mt-3 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+          /*
+           * Shown always on a narrow screen, revealed on hover above `sm`. These
+           * used to be hover-only, which meant a phone — with no pointer to hover
+           * with — could not reach the link or even mark a notice read, and a
+           * keyboard could not reach them either. `focus-within` fixes the second.
+           */
+          <div className="mt-3 flex items-center gap-2 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
             {!notification.isRead && onMarkRead && (
               <button
                 type="button"
@@ -121,18 +132,18 @@ export function NotificationCard({ notification, onMarkRead, compact = false }: 
                 Mark as read
               </button>
             )}
-            {notification.link && isInternalLink && (
+            {target && !target.external && (
               <Link
-                href={notification.link}
+                href={target.href}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
               >
-                <FileText className="h-3.5 w-3.5" />
-                Open application
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                {notificationActionLabel(notification)}
               </Link>
             )}
-            {notification.link && !isInternalLink && (
+            {target && target.external && (
               <a
-                href={notification.link}
+                href={target.href}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
