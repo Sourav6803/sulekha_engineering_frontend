@@ -2,12 +2,31 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Download, ExternalLink, FileText, Pencil, Users, Wrench, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle,
+  Download,
+  ExternalLink,
+  FileText,
+  MapPin,
+  Phone,
+  Settings2,
+  ShieldCheck,
+  StickyNote,
+  Upload,
+  Wrench,
+} from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDateShort, formatINR, formatNumber } from '@/lib/format';
 import { customerStatusStyle, ROOF_TYPE_LABEL, TIME_SLOT_LABEL } from './customerStatus';
+import { DOCUMENT_CATALOGUE, uploadedDocumentTypes } from './documentCatalogue';
+import { CustomerHero } from './CustomerHero';
+import { ApplicationJourney } from './ApplicationJourney';
+import { SchemeReferenceCard } from './SchemeReferenceCard';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
-import type { Customer } from '@/types/customer';
+import { PanelSerialNumbersCard } from './PanelSerialNumbersCard';
+import type { CSSProperties, ComponentType, ReactNode } from 'react';
+import type { Customer, CustomerDocument } from '@/types/customer';
 import type { InstallationDocument, InstallationStatus } from '@/types/installation';
 import type { CustomerHistorySummary } from '@/lib/api/customers.api';
 
@@ -19,6 +38,8 @@ interface CustomerDetailViewProps {
   canEdit?: boolean;
   onEdit?: () => void;
   onRefetch?: () => void;
+  /** Saves the panel serial list on its own, without opening the edit modal. */
+  onSavePanelSerials?: (serials: string[]) => Promise<void>;
 }
 
 const INSTALL_STATUS: Record<InstallationStatus, { label: string; className: string }> = {
@@ -30,11 +51,109 @@ const INSTALL_STATUS: Record<InstallationStatus, { label: string; className: str
   cancelled: { label: 'Cancelled', className: 'badge-error' },
 };
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+/** Shared card header: gradient icon tile, title, supporting line. */
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  tile,
+  action,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  tile: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--border-soft)] py-3 last:border-0">
-      <span className="text-sm text-[var(--muted)]">{label}</span>
-      <span className="text-right text-sm font-medium text-[var(--foreground)]">{value ?? '—'}</span>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start gap-4">
+        <span
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-[var(--shadow-sm)] ${tile}`}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-[var(--muted)]">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/** One label/value line inside a FieldGroup. */
+function Field({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5">
+      <dt className="text-sm text-[var(--muted)]">{label}</dt>
+      <dd className="text-right text-sm font-medium text-[var(--foreground)]">{value ?? '—'}</dd>
+    </div>
+  );
+}
+
+/** A titled cluster of fields, on its own tinted panel. */
+function FieldGroup({
+  icon: Icon,
+  title,
+  tile,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  tile: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-white/70 p-5">
+      <div className="flex items-center gap-2.5">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-white ${tile}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{title}</h3>
+      </div>
+      <dl className="mt-3 divide-y divide-[var(--border-soft)]">{children}</dl>
+    </div>
+  );
+}
+
+/**
+ * Documents on file, as a ring.
+ *
+ * The figure is the count of document records, not of the catalogue slots
+ * filled — a customer can hold two quotations and no PAN, and the ring
+ * reports that honestly rather than capping at 100%.
+ */
+function DocumentRing({ uploaded, total }: { uploaded: number; total: number }) {
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const ratio = total > 0 ? Math.min(uploaded / total, 1) : 0;
+  const dash = circumference * ratio;
+
+  return (
+    <div className="relative h-24 w-24 shrink-0">
+      <svg viewBox="0 0 80 80" className="h-24 w-24 -rotate-90" aria-hidden="true">
+        <circle cx="40" cy="40" r={radius} fill="none" stroke="var(--surface-strong)" strokeWidth="8" />
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke="var(--primary)"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circumference}`}
+          className="ring-draw"
+          style={{ '--ring-circumference': `${circumference}` } as CSSProperties}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-mono text-xl font-semibold text-[var(--foreground)]">{uploaded}</span>
+        <span className="text-[0.625rem] uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+          of {total}
+        </span>
+      </div>
     </div>
   );
 }
@@ -47,252 +166,276 @@ export function CustomerDetailView({
   canEdit = false,
   onEdit,
   onRefetch,
+  onSavePanelSerials,
 }: CustomerDetailViewProps) {
-  const status = customerStatusStyle(customer.status);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+  const documents = customer.documents ?? [];
   const fullAddress = [customer.address, customer.city, customer.state, customer.pincode]
     .filter(Boolean)
     .join(', ');
 
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  /*
+   * Everything below counts catalogue slots filled, not document records held.
+   * The two differ: a customer can hold two quotations and no PAN, and only
+   * the slot count means anything as a completion figure — counting records
+   * would let the ring read "20 of 18".
+   */
+  const uploadedTypes = uploadedDocumentTypes(documents);
+  const uploadedCount = DOCUMENT_CATALOGUE.filter((item) => uploadedTypes.has(item.type)).length;
+  const requiredMissing = DOCUMENT_CATALOGUE.filter(
+    (item) => item.required && !uploadedTypes.has(item.type),
+  ).length;
 
-  const documents = customer.documents || [];
-
-  const getDocumentStatus = (typeValue: string) => {
-    const doc = documents.find(d => d.type === typeValue);
-    if (!doc) return 'missing';
-    if (doc.url) return 'uploaded';
-    return 'pending';
+  /** "pending" is a record with no file behind it — worth distinguishing from
+   *  nothing at all, because the record is the reminder that it was started. */
+  const getDocumentStatus = (typeValue: CustomerDocument['type']): 'uploaded' | 'pending' | 'missing' => {
+    if (uploadedTypes.has(typeValue)) return 'uploaded';
+    return documents.some((item) => item.type === typeValue) ? 'pending' : 'missing';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <section className="surface-card overflow-hidden p-6 sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--secondary)]">
-              <Users className="h-7 w-7" />
-            </span>
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-semibold text-[var(--foreground)]">{customer.name}</h1>
-                <span className={`badge-pill ${status.className}`}>{status.label}</span>
-              </div>
-              <p className="mt-1 font-mono text-sm text-[var(--muted-soft)]">{customer.customerId}</p>
-            </div>
-          </div>
+      <CustomerHero customer={customer} summary={summary} canEdit={canEdit} onEdit={onEdit} />
 
-          {canEdit && onEdit && (
-            <button type="button" className="brand-button" onClick={onEdit}>
-              <Pencil className="h-4 w-4" />
-              Edit customer
-            </button>
-          )}
-        </div>
-
-        {/* Stat strip */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Installations</p>
-            <p className="mt-3 font-mono text-3xl font-semibold text-[var(--foreground)]">
-              {formatNumber(summary.totalInstallations)}
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted-soft)]">
-              {formatNumber(summary.completedInstallations)} completed
-            </p>
-          </div>
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">System capacity</p>
-            <p className="mt-3 font-mono text-3xl font-semibold text-[var(--foreground)]">
-              {formatNumber(summary.totalSystemCapacity)} <span className="text-base">kW</span>
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted-soft)]">
-              Avg {formatNumber(summary.averageSystemSize)} kW
-            </p>
-          </div>
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Total value</p>
-            <p className="mt-3 font-mono text-3xl font-semibold text-[var(--foreground)]">
-              {formatINR(summary.totalCost)}
-            </p>
-          </div>
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">System size</p>
-            <p className="mt-3 font-mono text-3xl font-semibold text-[var(--foreground)]">
-              {formatNumber(customer.systemSizeKW)} <span className="text-base">kW</span>
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted-soft)]">{ROOF_TYPE_LABEL[customer.roofType] ?? customer.roofType}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Details */}
-      <section className="surface-card p-6 sm:p-8">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-[var(--primary)]" />
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Details</h2>
-        </div>
-        <div className="mt-4 divide-y divide-[var(--border-soft)] sm:grid sm:grid-cols-2 sm:gap-x-8 sm:divide-y-0">
-          <div className="divide-y divide-[var(--border-soft)]">
-            <InfoRow label="Phone" value={<span className="font-mono">{customer.phone}</span>} />
-            <InfoRow label="Alternate phone" value={customer.alternatePhone ? <span className="font-mono">{customer.alternatePhone}</span> : '—'} />
-            <InfoRow label="Email" value={customer.email ?? '—'} />
-            <InfoRow label="Village" value={customer.village ?? '—'} />
-            <InfoRow label="Block" value={customer.block ?? '—'} />
-            <InfoRow label="Panchayat" value={customer.panchayat ?? '—'} />
-            <InfoRow label="Landmark" value={customer.landmark ?? '—'} />
-          </div>
-          <div className="divide-y divide-[var(--border-soft)]">
-            <InfoRow label="Address" value={fullAddress} />
-            <InfoRow label="Roof area" value={customer.roofArea != null ? `${formatNumber(customer.roofArea)} sq ft` : '—'} />
-            <InfoRow label="GST number" value={customer.gstNumber ?? '—'} />
-            <InfoRow label="PAN number" value={customer.panNumber ?? '—'} />
-            <InfoRow label="Referred by" value={customer.referredBy ?? '—'} />
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Installation preference</p>
-            <p className="mt-2 text-sm text-[var(--foreground)]">
-              {customer.preferredInstallationDate ? formatDateShort(customer.preferredInstallationDate) : 'No preferred date'}
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted-soft)]">
-              {customer.preferredTimeSlot ? TIME_SLOT_LABEL[customer.preferredTimeSlot] ?? customer.preferredTimeSlot : 'Any time'}
-            </p>
-          </div>
-          <div className="rounded-[var(--radius)] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Notes</p>
-            <p className="mt-2 text-sm text-[var(--foreground)]">{customer.notes ?? 'No notes'}</p>
-          </div>
-        </div>
-      </section>
+      <ApplicationJourney customer={customer} installations={installations} />
 
       {/* Documents */}
-      <section className="surface-card overflow-hidden p-6 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[var(--primary)]" />
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Documents</h2>
-            <span className="badge-pill bg-[var(--primary-tint)] text-[var(--primary-active)]">
-              {documents.length}/15
-            </span>
-          </div>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setUploadDialogOpen(true)}
-              className="brand-button"
-            >
-              <Upload className="h-4 w-4" />
-              Upload Documents
-            </button>
-          )}
-        </div>
-
-        {/* Document Status Bar */}
-        <div className="mt-6 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Document Status</p>
-            <span className="text-xs text-[var(--muted)]">
-              {documents.length} of 15 uploaded
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {[
-              { type: 'aadhar', label: 'Aadhar', required: true },
-              { type: 'panCard', label: 'PAN', required: true },
-              { type: 'passbookOrCheque', label: 'Passbook', required: true },
-              { type: 'landRecord', label: 'Land Record', required: true },
-              { type: 'sitePhotoBefore', label: 'Site Before', required: true },
-              { type: 'sitePhotoAfter', label: 'Site After', required: true },
-              { type: 'rtsFeasibilityReport', label: 'RTS Report', required: true },
-              { type: 'feasibilityApproval', label: 'Feasibility', required: true },
-              { type: 'voterId', label: 'Voter ID', required: false },
-              { type: 'electricBill', label: 'Electric Bill', required: false },
-              { type: 'loanApprovalLetter', label: 'Loan Letter', required: false },
-              { type: 'agreement', label: 'Agreement', required: false },
-              { type: 'quotation', label: 'Quotation', required: false },
-              { type: 'dcrCertificate', label: 'DCR Cert', required: false },
-              { type: 'panelSerialNumber', label: 'Panel Serial', required: false },
-            ].map(item => {
-              const status = getDocumentStatus(item.type);
-              return (
-                <div
-                  key={item.type}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
-                    status === 'uploaded'
-                      ? 'border-[var(--success)] bg-[var(--success-tint)]'
-                      : status === 'pending'
-                        ? 'border-[var(--warning)] bg-[var(--warning-tint)]'
-                        : 'border-[var(--border-soft)] bg-white'
-                  }`}
+      <section className="card-luxe wash-sky anim-rise p-6 sm:p-8" style={{ animationDelay: '100ms' }}>
+        <SectionHeader
+          icon={FileText}
+          title="Documents"
+          subtitle={
+            requiredMissing === 0
+              ? 'Every required document is on file'
+              : `${requiredMissing} required document${requiredMissing === 1 ? '' : 's'} still missing`
+          }
+          tile="bg-[linear-gradient(140deg,#4A90D9_0%,#1F5FA8_100%)]"
+          action={
+            <div className="flex items-center gap-4">
+              <DocumentRing uploaded={uploadedCount} total={DOCUMENT_CATALOGUE.length} />
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setUploadDialogOpen(true)}
+                  className="brand-button"
                 >
-                  {status === 'uploaded' ? (
-                    <CheckCircle className="h-4 w-4 text-[var(--success)]" />
-                  ) : status === 'pending' ? (
-                    <AlertCircle className="h-4 w-4 text-[var(--warning)]" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border-2 border-[var(--border)]" />
-                  )}
-                  <span className={`text-xs font-medium ${
+                  <Upload className="h-4 w-4" />
+                  Upload
+                </button>
+              )}
+            </div>
+          }
+        />
+
+        {/* Status grid — every type the CRM tracks, so a gap is visible
+            without opening the record. */}
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {DOCUMENT_CATALOGUE.map((item, index) => {
+            const status = getDocumentStatus(item.type);
+
+            const chipClass =
+              status === 'uploaded'
+                ? 'border-[var(--success)] bg-[var(--success-tint)]'
+                : status === 'pending'
+                  ? 'border-[var(--warning)] bg-[var(--warning-tint)]'
+                  : item.required
+                    ? 'border-[var(--border)] bg-white/70'
+                    : 'border-[var(--border-soft)] bg-white/50';
+
+            return (
+              <div
+                key={item.type}
+                className={`anim-pop flex items-center gap-2 rounded-lg border px-3 py-2 ${chipClass}`}
+                style={{ animationDelay: `${150 + index * 22}ms` }}
+              >
+                {status === 'uploaded' ? (
+                  <CheckCircle className="h-4 w-4 shrink-0 text-[var(--success)]" />
+                ) : status === 'pending' ? (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-[var(--warning)]" />
+                ) : (
+                  <span
+                    className={`h-4 w-4 shrink-0 rounded-full border-2 ${
+                      item.required ? 'border-[var(--muted-soft)]' : 'border-[var(--border)]'
+                    }`}
+                  />
+                )}
+                <span
+                  className={`truncate text-xs font-medium ${
                     status === 'uploaded' ? 'text-[var(--success)]' : 'text-[var(--muted)]'
-                  }`}>
-                    {item.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                  }`}
+                  title={item.label}
+                >
+                  {item.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Documents Grid */}
+        {/* Files on file */}
         {documents.length > 0 && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {documents.map((doc) => (
-              <div key={doc._id} className="rounded-xl border border-[var(--border-soft)] bg-white p-4 shadow-[var(--shadow-xs)]">
-                <div className="flex items-start justify-between gap-3">
+              <article
+                key={doc._id}
+                className="group flex items-start justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-white/80 p-4 transition-all duration-[var(--duration)] ease-out hover:-translate-y-0.5 hover:border-[var(--primary-soft)] hover:shadow-[var(--shadow-card-hover)]"
+              >
+                <div className="flex min-w-0 gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-tint)] text-[var(--primary-active)]">
+                    <FileText className="h-4 w-4" />
+                  </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--foreground)] truncate">{doc.fileName}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-soft)]">
-                      {doc.type.replace(/([A-Z])/g, ' $1').trim()}
+                    <p className="truncate text-sm font-medium text-[var(--foreground)]" title={doc.fileName}>
+                      {doc.fileName}
                     </p>
-                    {doc.fileSize && (
-                      <p className="text-xs text-[var(--muted-soft)]">{(doc.fileSize / 1024).toFixed(1)} KB</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ghost-button !px-2 !py-1.5 text-xs"
-                      title="View"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                    <a
-                      href={doc.url}
-                      download
-                      className="ghost-button !px-2 !py-1.5 text-xs"
-                      title="Download"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </a>
+                    <p className="mt-0.5 text-xs text-[var(--muted-soft)]">
+                      {doc.type.replace(/([A-Z])/g, ' $1').trim()}
+                      {doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ''}
+                      {doc.uploadedAt ? ` · ${formatDateShort(doc.uploadedAt)}` : ''}
+                    </p>
                   </div>
                 </div>
-              </div>
+                <div className="flex shrink-0 gap-1">
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ghost-button !px-2 !py-1.5"
+                    title="View"
+                    aria-label={`View ${doc.fileName}`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <a
+                    href={doc.url}
+                    download
+                    className="ghost-button !px-2 !py-1.5"
+                    title="Download"
+                    aria-label={`Download ${doc.fileName}`}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </article>
             ))}
           </div>
         )}
       </section>
 
-      {/* Installations */}
-      <section className="surface-card overflow-hidden p-6 sm:p-8">
-        <div className="flex items-center gap-2">
-          <Wrench className="h-5 w-5 text-[var(--primary)]" />
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Installations</h2>
+      {/*
+        Rendered only when the caller can save it. A card whose Save button is
+        wired to nothing would be worse than no card: the installer would type six
+        serial numbers, press Save, and be told nothing.
+      */}
+      {onSavePanelSerials && (
+        <PanelSerialNumbersCard
+          serials={customer.panelSerialNumbers ?? []}
+          systemSizeKW={customer.systemSizeKW}
+          canEdit={canEdit}
+          onSave={onSavePanelSerials}
+        />
+      )}
+
+      {/* Record details */}
+      <section className="card-luxe wash-mint p-6 sm:p-8">
+        <SectionHeader
+          icon={Phone}
+          title="Customer record"
+          subtitle={`${customer.customerId} · ${customerStatusStyle(customer.status).label}`}
+          tile="bg-[linear-gradient(140deg,#2BB3A8_0%,#0F7A5A_100%)]"
+        />
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <FieldGroup
+            icon={Phone}
+            title="Contact"
+            tile="bg-[linear-gradient(140deg,#34C46B_0%,#0B7A3D_100%)]"
+          >
+            <Field label="Phone" value={<span className="font-mono">{customer.phone}</span>} />
+            <Field
+              label="Alternate phone"
+              value={customer.alternatePhone ? <span className="font-mono">{customer.alternatePhone}</span> : '—'}
+            />
+            <Field label="Email" value={customer.email} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={MapPin}
+            title="Location"
+            tile="bg-[linear-gradient(140deg,#4A90D9_0%,#1F5FA8_100%)]"
+          >
+            <Field label="Address" value={fullAddress} />
+            <Field label="Village" value={customer.village} />
+            <Field label="Block" value={customer.block} />
+            <Field label="Panchayat" value={customer.panchayat} />
+            <Field label="Landmark" value={customer.landmark} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={ShieldCheck}
+            title="Identity & KYC"
+            tile="bg-[linear-gradient(140deg,#6D5BD0_0%,#4635A3_100%)]"
+          >
+            <Field label="PAN number" value={customer.panNumber} />
+            <Field label="GST number" value={customer.gstNumber} />
+            <Field label="Referred by" value={customer.referredBy} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={Settings2}
+            title="System & preference"
+            tile="bg-[linear-gradient(140deg,#E8B03A_0%,#C98A08_100%)]"
+          >
+            <Field
+              label="Roof area"
+              value={customer.roofArea != null ? `${formatNumber(customer.roofArea)} sq ft` : '—'}
+            />
+            <Field label="Roof type" value={ROOF_TYPE_LABEL[customer.roofType] ?? customer.roofType} />
+            <Field
+              label="Preferred date"
+              value={
+                customer.preferredInstallationDate
+                  ? formatDateShort(customer.preferredInstallationDate)
+                  : 'No preferred date'
+              }
+            />
+            <Field
+              label="Time slot"
+              value={
+                customer.preferredTimeSlot
+                  ? TIME_SLOT_LABEL[customer.preferredTimeSlot] ?? customer.preferredTimeSlot
+                  : 'Anytime'
+              }
+            />
+          </FieldGroup>
+
+          <div className="lg:col-span-2">
+            <FieldGroup
+              icon={StickyNote}
+              title="Notes"
+              tile="bg-[linear-gradient(140deg,#5E7A69_0%,#33503F_100%)]"
+            >
+              <div className="py-2.5 text-sm text-[var(--foreground)]">
+                {customer.notes ?? 'No notes recorded for this customer.'}
+              </div>
+            </FieldGroup>
+          </div>
         </div>
+      </section>
+
+      {/* Installations */}
+      <section className="card-luxe wash-teal p-6 sm:p-8">
+        <SectionHeader
+          icon={Wrench}
+          title="Installations"
+          subtitle={
+            installations.length === 0
+              ? 'No installations recorded yet'
+              : `${formatNumber(installations.length)} on file · ${formatINR(summary.totalCost)} total value`
+          }
+          tile="bg-[linear-gradient(140deg,#34C46B_0%,#0B7A3D_100%)]"
+        />
 
         {loading ? (
           <div className="skeleton mt-6 h-32 w-full" />
@@ -322,7 +465,10 @@ export function CustomerDetailView({
                   const isStatus = (installation.status ?? 'pending_quotation') as InstallationStatus;
                   const instStatus = INSTALL_STATUS[isStatus] ?? INSTALL_STATUS.pending_quotation;
                   return (
-                    <tr key={installation._id} className="rounded-[1.25rem] border border-[var(--border)] bg-white shadow-[var(--shadow-xs)]">
+                    <tr
+                      key={installation._id}
+                      className="rounded-[1.25rem] border border-[var(--border)] bg-white shadow-[var(--shadow-xs)] transition-colors duration-[var(--duration)] hover:bg-[var(--primary-tint)]/40"
+                    >
                       <td className="px-4 py-3">
                         <span className="font-mono text-sm font-semibold text-[var(--foreground)]">
                           {installation.installationId}
@@ -356,6 +502,8 @@ export function CustomerDetailView({
           </div>
         )}
       </section>
+
+      <SchemeReferenceCard systemSizeKW={customer.systemSizeKW} roofArea={customer.roofArea} />
 
       {/* Upload Dialog */}
       {canEdit && (

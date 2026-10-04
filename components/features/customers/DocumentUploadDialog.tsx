@@ -22,6 +22,11 @@ const ALL_DOCUMENT_TYPES = [
   { value: 'quotation', label: 'Quotation', icon: '💰', required: false },
   { value: 'dcrCertificate', label: 'DCR Certificate', icon: '🏆', required: false },
   { value: 'panelSerialNumber', label: 'Panel Serial Number', icon: '🔢', required: false },
+  // Filed as the government side of the process answers — not at intake, so none
+  // of these are marked required.
+  { value: 'eToken', label: 'eToken', icon: '🎫', required: false },
+  { value: 'acknowledgement', label: 'Acknowledgement', icon: '🧾', required: false },
+  { value: 'netMetering', label: 'Net Metering', icon: '🔌', required: false },
 ] as const;
 
 interface DocumentUploadDialogProps {

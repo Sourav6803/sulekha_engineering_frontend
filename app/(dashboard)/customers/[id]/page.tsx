@@ -103,16 +103,37 @@ export default function CustomerDetailPage() {
     }
   };
 
+  /**
+   * Save the panel serial list on its own, without opening the edit modal.
+   *
+   * Deliberately does not catch: the card owns the busy and error state around its
+   * own Save button, and a rejection swallowed here would show up there as a save
+   * that quietly did nothing.
+   */
+  const handleSavePanelSerials = async (serials: string[]) => {
+    await updateCustomer(id, { panelSerialNumbers: serials });
+    await load(false);
+    toast.success('Panel serial numbers saved', {
+      description: `${serials.length} serial number${serials.length === 1 ? '' : 's'} recorded.`,
+    });
+  };
+
   if (loading) {
     return (
-      <PageContainer>
-        <div className="space-y-4">
+      <PageContainer className="canvas-warm">
+        {/* Mirrors the real section stack — identity band, the KPI row, then the
+            two full-width panels — so the page does not jump when data lands. */}
+        <div className="space-y-6">
           <div className="skeleton h-5 w-56" />
-          <div className="skeleton h-40 w-full" />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="skeleton h-72 w-full" />
-            <div className="skeleton h-72 w-full" />
+          <div className="skeleton h-52 w-full" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="skeleton h-36 w-full" />
+            <div className="skeleton h-36 w-full" />
+            <div className="skeleton h-36 w-full" />
+            <div className="skeleton h-36 w-full" />
           </div>
+          <div className="skeleton h-56 w-full" />
+          <div className="skeleton h-80 w-full" />
         </div>
       </PageContainer>
     );
@@ -120,7 +141,7 @@ export default function CustomerDetailPage() {
 
   if (error || !customer) {
     return (
-      <PageContainer>
+      <PageContainer className="canvas-warm">
         <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Customers', href: '/customers' }, { label: 'Detail' }]} />
         <div className="surface-card mt-8">
           <EmptyState
@@ -141,18 +162,17 @@ export default function CustomerDetailPage() {
 
   return (
     <PageContainer
+      className="canvas-warm"
       header={
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Breadcrumbs
-              items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Customers', href: '/customers' }, { label: customer.name }]}
-            />
-            <Link href="/customers" className="ghost-button">
-              <ArrowLeft className="h-4 w-4" />
-              Back to customers
-            </Link>
-          </div>
-        </div>
+        // Just the trail: the hero band below carries its own "All customers"
+        // link, and two identical controls on one screen is noise.
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Customers', href: '/customers' },
+            { label: customer.name },
+          ]}
+        />
       }
     >
       <CustomerDetailView
@@ -165,6 +185,7 @@ export default function CustomerDetailPage() {
           setEditOpen(true);
         }}
         onRefetch={() => load(false)}
+        onSavePanelSerials={handleSavePanelSerials}
       />
 
       {/* Edit modal — conditionally mounted so each open is a fresh instance */}

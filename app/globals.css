@@ -427,6 +427,156 @@
   .animate-spin-slow {
     animation: spin-slow 5s linear infinite;
   }
+
+  /* ============================================================
+     PREMIUM CARD SYSTEM — Customer 360
+
+     The customer detail page's own vocabulary, kept local to that
+     screen so the "one signature gradient" restraint rule the rest
+     of the app follows is not quietly rewritten for every card in
+     the product.
+
+     Two layers compose:
+       .card-luxe  the surface  — lift on hover, gradient hairline
+                                  along the top edge
+       .wash-*     the tint     — one hue per card, so a row of them
+                                  reads as a set with rhythm rather
+                                  than four identical boxes
+
+     Every wash is a pale → white → pale diagonal: colour in the
+     corners, white where the figures sit, so a KPI keeps its
+     contrast whichever wash it lands on.
+     ============================================================ */
+
+  .card-luxe {
+    @apply relative overflow-hidden rounded-[var(--radius)] border border-[var(--border-soft)] shadow-[var(--shadow-card)];
+    background-color: var(--surface);
+    transition:
+      transform var(--duration) var(--ease-out),
+      box-shadow var(--duration) var(--ease-out),
+      border-color var(--duration) var(--ease-out);
+  }
+
+  .card-luxe:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-soft);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Accent hairline across the top edge. `--card-accent` lets a card
+     name its own gradient; the leaf gradient is the default. */
+  .card-luxe::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-image: var(--card-accent, var(--gradient-leaf));
+    opacity: 0.6;
+    transition: opacity var(--duration) var(--ease-out);
+  }
+
+  .card-luxe:hover::after {
+    opacity: 1;
+  }
+
+  /* Opt-in highlight sweep. Deliberately not on every card: a page where
+     everything shimmers on hover stops reading as premium and starts
+     reading as a slot machine. Reserved for headline figures. */
+  .card-sheen::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: -60%;
+    width: 45%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: skewX(-16deg);
+    pointer-events: none;
+  }
+
+  .card-sheen:hover::before {
+    animation: sheen-sweep 850ms var(--ease-out);
+  }
+
+  /* ---- Wash hues ---- */
+  .wash-mint   { background-image: linear-gradient(145deg, #E2F6E9 0%, #FFFFFF 46%, #F3FBF6 100%); }
+  .wash-teal   { background-image: linear-gradient(145deg, #DFF3F2 0%, #FFFFFF 46%, #F1FBFA 100%); }
+  .wash-sky    { background-image: linear-gradient(145deg, #E2EEFB 0%, #FFFFFF 46%, #F2F7FE 100%); }
+  .wash-solar  { background-image: linear-gradient(145deg, #FBF1D6 0%, #FFFFFF 46%, #FDF9EE 100%); }
+  .wash-violet { background-image: linear-gradient(145deg, #ECE9FA 0%, #FFFFFF 46%, #F6F5FE 100%); }
+  .wash-clay   { background-image: linear-gradient(145deg, #FBE7E3 0%, #FFFFFF 46%, #FDF4F2 100%); }
+
+  /* ---- Hero band ---- */
+  /* The page's one saturated surface. The gradient is oversized and
+     panned very slowly so the band has life without motion that pulls
+     the eye away from the figures on top of it.
+
+     Both of its animations are listed together here rather than stacking
+     `.anim-rise` on the same element: `animation` is a shorthand, so two
+     rules declaring it do not merge — the later one wins outright and the
+     pan would quietly disappear. Listing them in one declaration is the
+     only way they coexist. (Same caution applies to `.orb`.) */
+  .hero-luxe {
+    @apply relative overflow-hidden rounded-[var(--radius-lg)] text-white;
+    background-image: linear-gradient(
+      118deg,
+      #085B30 0%,
+      #0B7A3D 22%,
+      #14A75B 46%,
+      #0A6B36 72%,
+      #053F22 100%
+    );
+    background-size: 240% 240%;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), var(--shadow-lg);
+    /* rise-in plays once on mount and hands the element back (`backwards`,
+       not `both`); gradient-pan then runs forever. They touch different
+       properties, so neither interrupts the other. */
+    animation:
+      rise-in 640ms var(--ease-out) backwards,
+      gradient-pan 26s ease-in-out infinite;
+  }
+
+  /* Soft light blooms behind the hero content. */
+  .orb {
+    @apply pointer-events-none absolute rounded-full;
+    filter: blur(46px);
+    animation: orb-float 16s ease-in-out infinite;
+  }
+  .orb-slow { animation-duration: 23s; }
+  .orb-delay { animation-delay: -7s; }
+
+  /* ---- Motion ---- */
+  /* Entrance animations keep their `from` state inside the keyframes,
+     never in the base class — so if the animation never runs (reduced
+     motion, an old engine) the element is simply visible rather than
+     stranded at opacity 0.
+
+     `backwards`, not `both`: a filled animation outranks every normal
+     declaration, so `both` would keep returning `transform: translateY(0)`
+     after the entrance finished and silently cancel the `.card-luxe:hover`
+     lift on every card that animates in. `backwards` applies the from-state
+     during the delay, then hands the element back to the stylesheet — and
+     since the resting state is already opacity 1 / no transform, the end of
+     the animation looks identical either way. */
+  .anim-rise { animation: rise-in 640ms var(--ease-out) backwards; }
+  .anim-pop  { animation: pop-in 560ms var(--ease-out) backwards; }
+
+  /* Progress meters and the documents ring animate on mount; their
+     final geometry comes from inline style, so the animation only
+     has to know where to start. */
+  .meter-fill {
+    transform-origin: left center;
+    animation: bar-grow 900ms var(--ease-out) backwards;
+  }
+  .ring-draw {
+    animation: ring-draw 1100ms var(--ease-out) backwards;
+  }
+
+  .live-dot {
+    animation: pulse-soft 2.2s ease-in-out infinite;
+  }
 }
 
 /* ============================================================
@@ -506,4 +656,69 @@
 
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
+}
+
+/* ---- Customer 360 ---- */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Runs to 135% so the highlight leaves the card completely before the
+   animation ends — otherwise it snaps back to its start position and
+   reads as a flicker. */
+@keyframes sheen-sweep {
+  from { left: -60%; }
+  to   { left: 135%; }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(3%, -8%, 0) scale(1.12); }
+}
+
+@keyframes gradient-pan {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes ring-draw {
+  from { stroke-dashoffset: var(--ring-circumference, 0); }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.86); }
+}
+
+/* The base layer already truncates animation durations under reduced
+   motion, but it does not remove animation-delay — which would leave a
+   staggered card blank for its delay, then pop. This turns the
+   animations off outright instead. Unlayered on purpose so it beats the
+   component-layer classes above regardless of order. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-pop,
+  .meter-fill,
+  .ring-draw,
+  .hero-luxe,
+  .orb,
+  .orb-slow,
+  .orb-delay,
+  .live-dot,
+  .card-sheen:hover::before {
+    animation: none !important;
+  }
 }
