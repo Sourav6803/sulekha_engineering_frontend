@@ -23,6 +23,8 @@ interface BOQItemsEditorProps {
   showAmountColumn?: boolean;
   /** Only the domestic sheet has a standard template to fall back on. */
   hasStandardTemplate?: boolean;
+  /** The form supplies its own section heading, which makes this one a repeat. */
+  showHeading?: boolean;
   disabled?: boolean;
 }
 
@@ -59,6 +61,7 @@ export function BOQItemsEditor({
   showSections = false,
   showAmountColumn = false,
   hasStandardTemplate = true,
+  showHeading = true,
   disabled = false,
 }: BOQItemsEditorProps) {
   const rows = items.length > 0 ? items : [];
@@ -112,7 +115,7 @@ export function BOQItemsEditor({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="form-label mb-0">Bill of quantities</p>
+          {showHeading && <p className="form-label mb-0">Bill of quantities</p>}
           <p className="text-xs text-[var(--muted)]">
             {rows.length} of {limit} lines
             {showSections ? ' · lines sharing a section print under one heading' : ' · the document prints on one page'}
@@ -136,11 +139,19 @@ export function BOQItemsEditor({
       )}
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--border-soft)] px-3 py-4 text-center text-sm text-[var(--muted)]">
-          {hasStandardTemplate
-            ? 'No lines yet. Saving without lines uses the standard 8-line template.'
-            : 'No lines yet. Add a line for every item on this quotation.'}
-        </p>
+        <div className="rounded-lg border border-dashed border-[var(--border-soft)] px-3 py-4 text-center">
+          <p className="text-sm text-[var(--muted)]">
+            {hasStandardTemplate
+              ? 'No lines yet. Saving without lines uses the standard 8-line template.'
+              : 'No lines yet. Add a line for every item on this quotation.'}
+          </p>
+          {/* The columns are only named in the header row, which an empty table does not render. */}
+          <p className="mt-1 text-xs text-[var(--muted-soft)]">
+            Each line carries {showSections ? 'a section, ' : ''}a description
+            {showSpecification ? ', a specification' : ''}, a brand / model (optional), a quantity (a
+            number, or a pair such as 5/6) and a unit.
+          </p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table
@@ -154,8 +165,15 @@ export function BOQItemsEditor({
                 {showSections && <th className="w-44 pb-1">Section</th>}
                 <th className="pb-1">Description</th>
                 {showSpecification && <th className="pb-1">Specification</th>}
-                <th className="w-40 pb-1">Brand / model</th>
-                <th className="w-20 pb-1">Qty</th>
+                <th className="w-40 pb-1">
+                  Brand / model{' '}
+                  <span className="text-[10px] font-normal normal-case tracking-normal text-[var(--muted-soft)]">
+                    optional
+                  </span>
+                </th>
+                <th className="w-20 pb-1" title="A number, or a pair such as 5/6">
+                  Qty
+                </th>
                 <th className="w-24 pb-1">Unit</th>
                 {showAmountColumn && <th className="w-32 pb-1 text-right">Amount (₹)</th>}
                 <th className="w-32 pb-1 text-right">Actions</th>
@@ -228,14 +246,21 @@ export function BOQItemsEditor({
                       />
                     </td>
                     <td className="py-1 pr-2">
+                      {/*
+                        Free text, not a number input: the tally is often written
+                        as a pair ("5/6") until the site survey settles it, and a
+                        number input silently refuses the slash. A plain figure is
+                        still stored as a number on save.
+                      */}
                       <input
                         className="form-input w-full text-right"
-                        type="number"
-                        min={0.001}
-                        step="any"
+                        type="text"
                         value={item.qty ?? ''}
                         disabled={disabled}
-                        onChange={(event) => update(index, { qty: Number(event.target.value) })}
+                        placeholder="6"
+                        title="A number, or a pair such as 5/6 while the count is still open"
+                        aria-label={`Quantity for line ${index + 1}`}
+                        onChange={(event) => update(index, { qty: event.target.value })}
                       />
                     </td>
                     <td className="py-1 pr-2">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthSession } from '@/lib/auth/session';
 import { Sun, Zap, Shield, Users, TrendingUp, MapPin, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 
@@ -92,7 +93,16 @@ export default function LoginPage() {
    * history stack behind the console.
    */
   useEffect(() => {
-    if (!isAuthenticated) return;
+    /*
+     * Only leave this screen when the half the proxy authorises on is really
+     * there. Without the cookie the proxy is certain to bounce the request back
+     * here — and a bounce is a document reload, so it would loop rather than
+     * complain. `AuthSession.repairSession()` (run by the auth store's hydrate)
+     * normally guarantees the mirror; this check is the belt to that pair of
+     * braces, and it is what keeps the form on screen if the mirror cannot be
+     * written at all.
+     */
+    if (!isAuthenticated || !AuthSession.hasCookieMirror()) return;
 
     const timer = setTimeout(() => {
       window.location.replace(redirectPath);

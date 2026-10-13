@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
 import { BOQItemsEditor } from './BOQItemsEditor';
+import { buildTemplateItems } from './boqTemplate';
 import { STRUCTURE_OPTIONS, formatDocumentAmount } from './quotationDisplay';
 import { formatINR } from '@/lib/format';
 import type {
@@ -181,6 +182,38 @@ const fromQuotation = (quotation: QuotationDocument): FormState => ({
  * user sees the problem before the request is made. The server remains the
  * authority.
  */
+/**
+ * A BOQ quantity is a number, or a pair such as "5/6" while the panel count is
+ * still open. Mirrors the server's rule in backend/src/utils/quotationQuantity.js;
+ * the server remains the authority.
+ */
+const QUANTITY_PATTERN =
+  /^(?!0+(?:\.0+)?(?:\s*\/\s*0+(?:\.0+)?)?$)\d{1,5}(?:\.\d{1,3})?(?:\s*\/\s*\d{1,5}(?:\.\d{1,3})?)?$/;
+
+const isQuantity = (value: number | string | null | undefined): boolean => {
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 && trimmed.length <= 16 && QUANTITY_PATTERN.test(trimmed);
+  }
+  return false;
+};
+
+/** A plain figure is stored as a number; a pair such as "5/6" stays text. */
+const normaliseQty = (value: number | string): number | string => {
+  if (typeof value === 'number') return value;
+  const trimmed = value.trim();
+  const numeric = Number(trimmed);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : trimmed;
+};
+
+/** Do two BOQ lines carry the same values as far as the template is concerned? */
+const sameLine = (a: QuotationItem, b: QuotationItem): boolean =>
+  a.description === b.description &&
+  (a.brandModel ?? '') === (b.brandModel ?? '') &&
+  String(a.qty ?? '') === String(b.qty ?? '') &&
+  (a.unit ?? null) === (b.unit ?? null);
+
 const validate = (
   form: FormState,
   items: QuotationItem[],
@@ -240,8 +273,8 @@ const validate = (
 
   for (const [index, item] of items.entries()) {
     if (!item.description?.trim()) return `BOQ line ${index + 1} needs a description.`;
-    if (!Number.isFinite(Number(item.qty)) || Number(item.qty) <= 0) {
-      return `BOQ line ${index + 1} needs a quantity greater than 0.`;
+    if (!isQuantity(item.qty)) {
+      return `BOQ line ${index + 1} needs a quantity — a number, or a pair such as 5/6.`;
     }
   }
 
@@ -302,6 +335,22 @@ export function QuotationForm({
   );
   const [items, setItems] = useState<QuotationItem[]>(() => initial?.items ?? []);
   const [panelQtyTouched, setPanelQtyTouched] = useState(Boolean(initial?.panelQty));
+
+  /**
+   * BOQ lines the operator has edited by hand. The standard template keeps up
+   * with the system details on the untouched lines only, so rewording the panel
+   * line — or replacing its count with a pair — is never undone later.
+   */
+  const touchedLines = useRef<Set<number>>(new Set());
+  /** Once anything is edited by hand the list is never replaced wholesale. */
+  const listEdited = useRef(false);
+
+  /*
+   * Nothing is reported until a save is attempted. A fresh form used to open
+   * with "Customer name is required" already showing and its save button already
+   * dead, which reads as a fault rather than as guidance.
+   */
+  const [showErrors, setShowErrors] = useState(mode === 'edit');
 
   // -------------------------------------------------------------- number field
   /** What the admin has in the number box. Only used on create. */
@@ -385,6 +434,85 @@ export function QuotationForm({
     return Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100;
   }, [items]);
 
+  /** What the strip beside the save button prints. */
+  const previewAmount = form.amount !== '' ? Number(form.amount) : sumOfLines;
+  const previewAmountText =
+    previewAmount === null || previewAmount === undefined || !Number.isFinite(Number(previewAmount))
+      ? '—'
+      : formatINR(Number(previewAmount));
+
+  /**
+   * Record which lines were edited by hand, so the template refreshes only the
+   * rest. The first edit anywhere also stops the list being replaced wholesale —
+   * that is what keeps a deliberately deleted line deleted.
+   */
+  const handleItemsChange = (next: QuotationItem[]) => {
+    const previous = items;
+    listEdited.current = true;
+
+    const edited = new Set(touchedLines.current);
+    next.forEach((item, index) => {
+      const before = previous[index];
+      if (!before || !sameLine(before, item)) edited.add(index);
+    });
+    touchedLines.current = edited;
+
+    setItems(next);
+  };
+
+  /*
+   * Start the domestic sheet from the company's standard BOQ template, and keep
+   * its untouched lines in step with the system details as they are typed.
+   *
+   * The server can only seed that template at save time, which left no chance to
+   * adjust a line before issuing — and the panel line has to be reworded whenever
+   * the consumer takes non-DCR or a different module, with a count often written
+   * as a pair until the site survey settles it. Create only: a saved quotation
+   * keeps exactly the lines it was saved with.
+   */
+  useEffect(() => {
+    if (mode !== 'create' || isBusinessSheet) return;
+
+    const template = defaults?.boqTemplate;
+    if (!template?.length) return;
+
+    const built = buildTemplateItems({
+      template,
+      structures: defaults?.structures,
+      structureType: form.structureType,
+      systemSizeKW: form.systemSizeKW,
+      panelWp: form.panelWp || panelWpDefault,
+      inverterCapacityKW: form.inverterCapacityKW || form.systemSizeKW,
+      panelQty: Number(effectivePanelQty) || null,
+      panelBrand: form.panelBrand,
+      inverterBrand: form.inverterBrand,
+      sizingFactor,
+    });
+
+    setItems((previous) => {
+      // Untouched list: the template is the whole thing.
+      if (previous.length === 0 || !listEdited.current) return built;
+
+      // Otherwise only the lines the operator has not edited follow the form.
+      return built.map((line, index) =>
+        touchedLines.current.has(index) && previous[index] ? previous[index] : line
+      );
+    });
+  }, [
+    mode,
+    isBusinessSheet,
+    defaults,
+    form.structureType,
+    form.systemSizeKW,
+    form.panelWp,
+    form.inverterCapacityKW,
+    form.panelBrand,
+    form.inverterBrand,
+    panelWpDefault,
+    sizingFactor,
+    effectivePanelQty,
+  ]);
+
   const validationMessage = useMemo(
     () => validate(form, items, itemLimit, isBusinessSheet),
     [form, items, itemLimit, isBusinessSheet]
@@ -420,6 +548,8 @@ export function QuotationForm({
     normaliseNumber(numberCheck?.quotationNo ?? '') === normaliseNumber(numberInput.trim());
 
   const handleSubmit = () => {
+    // A save attempt is the moment to start reporting what is missing.
+    setShowErrors(true);
     if (validationMessage || numberError) return;
 
     const payload: QuotationPayload = {
@@ -460,7 +590,16 @@ export function QuotationForm({
       amountIncludesGST: form.amountIncludesGST,
       status: form.status,
       notes: form.notes.trim(),
-      items: items.map((item, index) => ({ ...item, order: index + 1 })),
+      /*
+       * A plain figure goes as a number and a pair such as "5/6" as text — the
+       * same rule the server applies. The quantity field takes text now, so the
+       * conversion has to happen here rather than in the browser's number input.
+       */
+      items: items.map((item, index) => ({
+        ...item,
+        qty: normaliseQty(item.qty),
+        order: index + 1,
+      })),
       // terms / paymentTerms are fixed company-wide and are never sent.
     };
 
@@ -589,15 +728,23 @@ export function QuotationForm({
 
       {/* Customer */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">Customer</h3>
+        <h3 className="border-b border-[var(--border-soft)] pb-1.5 text-sm font-semibold text-[var(--foreground)]">
+          {isBusinessSheet ? 'Customer and delivery' : 'Consumer details'}
+        </h3>
         <div className="grid gap-3 sm:grid-cols-2">
+          {/*
+            The two genuinely required fields are guarded by the form's own
+            validation, which names the field in a consistent message. The
+            native `required` bubble is deliberately not used here: it pre-empts
+            that message, and on the business sheet the kW figure it insisted on
+            is genuinely optional.
+          */}
           <Field label="Consumer name *">
             <input
               className="form-input"
               value={form.customerName}
               onChange={(event) => set('customerName', event.target.value)}
               placeholder="Souvik Ghosh"
-              required
             />
           </Field>
           <Field label="Consumer id">
@@ -719,7 +866,9 @@ export function QuotationForm({
 
       {/* System */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">System</h3>
+        <h3 className="border-b border-[var(--border-soft)] pb-1.5 text-sm font-semibold text-[var(--foreground)]">
+          System
+        </h3>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="System size (kW) *">
             <input
@@ -731,7 +880,6 @@ export function QuotationForm({
               value={form.systemSizeKW}
               onChange={(event) => set('systemSizeKW', event.target.value)}
               placeholder="3"
-              required
             />
           </Field>
           <Field label="Panel watt-peak (Wp)">
@@ -808,27 +956,32 @@ export function QuotationForm({
 
       {/* BOQ */}
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">Bill of quantities</h3>
+        <h3 className="border-b border-[var(--border-soft)] pb-1.5 text-sm font-semibold text-[var(--foreground)]">
+          Bill of quantities
+        </h3>
         <p className="text-xs text-[var(--muted)]">
           {isBusinessSheet
             ? 'Business sheets have no fixed pattern — add a line for every item. Lines sharing a section heading print under one heading with their own sub-total.'
-            : 'Leave this empty to start from the standard 8-line template on save.'}
+            : 'Filled in from the standard 8-line template — edit any line before issuing. The panel line is the one that usually changes (non-DCR, or a different module), and its quantity may be written as a pair such as 5/6 until the survey settles it. Delete every line and the template comes back on save.'}
         </p>
         <BOQItemsEditor
           items={items}
-          onChange={setItems}
+          onChange={handleItemsChange}
           limit={itemLimit}
           showSpecification={showSpecificationColumn}
           showSections={showSections}
           showAmountColumn={isBusinessSheet}
           hasStandardTemplate={!isBusinessSheet}
+          showHeading={false}
           disabled={submitting}
         />
       </section>
 
       {/* Money, dates, status */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">Amount, dates and status</h3>
+        <h3 className="border-b border-[var(--border-soft)] pb-1.5 text-sm font-semibold text-[var(--foreground)]">
+          Amount, dates and status
+        </h3>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Total amount (₹)">
             <input
@@ -951,14 +1104,41 @@ export function QuotationForm({
         </Field>
       </section>
 
-      {validationMessage && (
+      {/*
+        The last look before it is issued: what is about to be saved, in one line
+        beside the button that saves it.
+      */}
+      <div className="surface-card flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
+          <span>
+            <span className="font-medium text-[var(--foreground)]">{items.length}</span> BOQ line
+            {items.length === 1 ? '' : 's'}
+            {!isBusinessSheet && items.length === 0 ? ' (template applies on save)' : ''}
+          </span>
+          <span>limit {itemLimit}</span>
+          <span>{isBusinessSheet ? 'total before GST' : 'total includes GST'}</span>
+          <span className="capitalize">{form.status}</span>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
+            {form.amountIncludesGST ? 'Total including GST' : 'Total'}
+          </p>
+          <p className="text-lg font-semibold text-[var(--foreground)]">{previewAmountText}</p>
+        </div>
+      </div>
+
+      {showErrors && validationMessage && (
         <p role="alert" className="rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--error)]">
           {validationMessage}
         </p>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-1">
-        <button type="submit" disabled={submitting || Boolean(validationMessage)} className="brand-button">
+        <button
+          type="submit"
+          disabled={submitting || (showErrors && Boolean(validationMessage))}
+          className="brand-button"
+        >
           {submitting ? 'Saving…' : mode === 'create' ? 'Create quotation' : 'Save changes'}
         </button>
       </div>

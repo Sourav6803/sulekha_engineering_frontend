@@ -46,6 +46,66 @@ const parseJson = <T>(value: string | null): T | null => {
   }
 };
 
+/**
+ * Put the two halves of a session back together.
+ *
+ * A signed-in session lives in two places: the token in storage, which authorises
+ * every API call, and a cookie mirror of that same token, which is the only half
+ * the edge proxy (proxy.ts) can see. They expire on different clocks — a cookie
+ * has a 7-day life, storage has none — so the mirror is regularly lost while the
+ * token survives, and nothing but a sign-in ever wrote it back.
+ *
+ * That disagreement is what makes the browser bounce. /login reads the stored
+ * token, believes the visitor is signed in, and sends the document to /dashboard;
+ * the proxy finds no cookie, sends it straight back to /login; the fresh document
+ * does the same thing again — a reload loop several times a second, which is
+ * impossible to type into because each round tears the page down mid-keystroke.
+ *
+ * So whichever half survived is copied over the missing one, before anything
+ * reads `isAuthenticated`. Whether the token is still *valid* is deliberately not
+ * judged here: that belongs to the API layer, where a 401 refreshes the session
+ * or clears it (see lib/api/axiosClient.ts).
+ */
+const repairSession = () => {
+  if (!isBrowser) return;
+
+  const storedAccess = getStoredValue(ACCESS_TOKEN_KEY);
+  const cookieAccess = getCookieValue(ACCESS_TOKEN_COOKIE);
+
+  // Neither half is present: nothing to repair, and no session either way.
+  if (!storedAccess && !cookieAccess) return;
+
+  if (storedAccess && !cookieAccess) {
+    // The usual case — the cookie expired or was dropped while the token stayed.
+    setCookieValue(ACCESS_TOKEN_COOKIE, storedAccess);
+    const storedRefresh = getStoredValue(REFRESH_TOKEN_KEY);
+    if (storedRefresh) setCookieValue(REFRESH_TOKEN_COOKIE, storedRefresh);
+    return;
+  }
+
+  if (!storedAccess && cookieAccess) {
+    // The mirror outlived storage. It carries the same token, so the session is
+    // restored rather than thrown away. `localStorage` is assumed: a
+    // sessionStorage-only sign-in cannot be told apart from here, and being
+    // signed in for the rest of the browser session is the harmless direction to
+    // guess in.
+    window.localStorage.setItem(ACCESS_TOKEN_KEY, cookieAccess);
+    const cookieRefresh = getCookieValue(REFRESH_TOKEN_COOKIE);
+    if (cookieRefresh) window.localStorage.setItem(REFRESH_TOKEN_KEY, cookieRefresh);
+  }
+};
+
+/**
+ * Is the half the proxy authorises on actually present?
+ *
+ * Guards must ask this before navigating to a protected route: without the cookie
+ * the proxy will certainly bounce the request, and a bounce is a document reload.
+ */
+const hasCookieMirror = (): boolean => {
+  if (!isBrowser) return false;
+  return Boolean(getCookieValue(ACCESS_TOKEN_COOKIE));
+};
+
 export const AuthSession = {
   getAccessToken: (): string | null => {
     if (!isBrowser) return null;
@@ -65,6 +125,12 @@ export const AuthSession = {
   isAuthenticated: (): boolean => {
     return Boolean(AuthSession.getAccessToken());
   },
+
+  /** See `repairSession` above. Call this before reading `isAuthenticated`. */
+  repairSession,
+
+  /** True when the cookie mirror the proxy authorises on is present. */
+  hasCookieMirror,
 
   setSession: (tokens: AuthTokens, user: AuthUser | null, persist = true) => {
     if (!isBrowser) return;
@@ -97,3 +163,16 @@ export const AuthSession = {
     deleteCookie(REFRESH_TOKEN_COOKIE);
   },
 };
+
+/*
+ * Repair the pair as soon as this module loads, rather than only when something
+ * mounts `useAuth` and calls `hydrate()`.
+ *
+ * `hydrate()` is guarded by `if (!hydrated)`, and the cross-tab `storage` listener
+ * (store/useAuthStore.ts) also sets `hydrated` — so an event arriving before the
+ * hook's mount effect would skip the repair entirely and leave the mirror missing,
+ * which is the state this fix exists to prevent. Running here is unconditional and
+ * happens before any component renders, so the login screen's guard reads a
+ * repaired pair on the very first paint.
+ */
+if (isBrowser) repairSession();

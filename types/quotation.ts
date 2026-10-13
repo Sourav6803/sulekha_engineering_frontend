@@ -44,7 +44,12 @@ export interface QuotationItem {
   brandModel?: string;
   /** Business sheet only: its own technical specification column. */
   specification?: string;
-  qty: number;
+  /**
+   * Normally a number. It may also be a pair such as "5/6" — the panel tally is
+   * often not settled until the site survey, and the office writes the range it
+   * expects rather than inventing a figure. The document prints it verbatim.
+   */
+  qty: number | string;
   unit?: QuotationUnit | null;
   amount?: number | null;
   isOptional?: boolean;
@@ -304,11 +309,34 @@ export interface QuotationDefaults {
   partnerTitle?: string;
   companyName: string;
   schemes: Array<{ code: string; label?: string }>;
-  structures: Array<{ value: StructureType; label: string }>;
+  /** `defaultLine` is the BOQ line this structure prints as. May be absent on an older server. */
+  structures: Array<{
+    value: StructureType;
+    label: string;
+    defaultLine?: string;
+    overviewPhrase?: string;
+  }>;
   terms: Array<{ label?: string | null; text: string }>;
   paymentTerms: Array<{ text: string }>;
   /** Both sheets described. Absent on an older server. */
   quotationTypes?: QuotationTypeOption[];
+  /**
+   * The company's standard eight-line BOQ, with `{{token}}` placeholders, so the
+   * domestic form can start from the same lines the server would seed and let
+   * them be edited before the quotation is issued. Absent on an older server.
+   */
+  boqTemplate?: QuotationBoqTemplateLine[];
+}
+
+/** One line of the company's standard BOQ template, as configured server-side. */
+export interface QuotationBoqTemplateLine {
+  description: string;
+  brandModel?: string;
+  /** `panel` follows the system size; a number is a fixed quantity. */
+  qtyRule: number | 'panel';
+  unit?: QuotationUnit | null;
+  isStructureLine?: boolean;
+  order?: number;
 }
 
 export interface QuotationNextNumber {

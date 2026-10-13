@@ -42,12 +42,24 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => set({ user, isAuthenticated: AuthSession.isAuthenticated(), hydrated: true }),
 
-  hydrate: () =>
+  hydrate: () => {
+    /*
+     * Re-pair the session with its cookie mirror before reading it.
+     *
+     * The token in storage and its cookie mirror expire on different clocks, so
+     * the mirror goes missing while the token survives — and while they disagree
+     * the login screen sends the document to /dashboard and the edge proxy sends
+     * it back, reloading the page every couple of seconds. Repairing the pair
+     * here, before anything reads `isAuthenticated`, is what ends that loop.
+     */
+    AuthSession.repairSession();
+
     set({
       user: AuthSession.getUser(),
       isAuthenticated: AuthSession.isAuthenticated(),
       hydrated: true,
-    }),
+    });
+  },
 
   forget: () => {
     AuthSession.clearSession();
