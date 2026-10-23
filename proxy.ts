@@ -3,6 +3,18 @@ import type { NextRequest } from 'next/server';
 
 const AUTH_COOKIE_NAME = 'sulekha_access_token';
 const PUBLIC_PATHS = ['/', '/login'];
+
+/**
+ * Whole sections a visitor may read without an account: the project gallery and
+ * the enquiry form. Prefix matching, because `/projects/palash-5kw` is as public
+ * as `/projects` — an exact-match list would have bounced every shared project
+ * link to the staff login.
+ */
+const PUBLIC_PREFIXES = ['/projects', '/enquiry'];
+
+const isPublicPath = (pathname: string) =>
+  PUBLIC_PATHS.includes(pathname) ||
+  PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 const IGNORED_PATHS = ['/_next', '/api', '/static', '/favicon.ico', '/robots.txt', '/manifest.json', '/sitemap.xml'];
 
 /**
@@ -32,7 +44,7 @@ export function proxy(request: NextRequest) {
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
-  if (PUBLIC_PATHS.includes(pathname)) {
+  if (isPublicPath(pathname)) {
     if (pathname === '/login' && token) {
       const redirectUrl = request.nextUrl.clone();
       // Respect the originally-intended destination when one was provided.

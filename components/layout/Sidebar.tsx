@@ -21,6 +21,10 @@ import {
   UserCog,
   X,
   Sun,
+  Globe,
+  Images,
+  Megaphone,
+  Inbox,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { AuthRole } from "@/types/auth";
@@ -68,6 +72,12 @@ const APPLICATION_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
 const AGENT_ADMIN_ROLES: AuthRole[] = ['admin'];
 
 /**
+ * The public website's content and its enquiries. The backend gates these
+ * routes to admin/manager as well, so the menu and the API agree.
+ */
+const WEBSITE_ROLES: AuthRole[] = ['admin', 'manager'];
+
+/**
  * Quotation sits in its own group with two entries, both reading the same
  * records: the quotation sheet and the SL number register.
  */
@@ -93,6 +103,18 @@ const NAV_ENTRIES: NavEntry[] = [
   // it can be raised for a consumer whose quotation is not in the system.
   { href: "/agreements", label: "Agreements", icon: FileSignature, roles: OFFICE_ROLES },
   { href: "/bom-templates", label: "BOM Templates", icon: ClipboardList, roles: OFFICE_ROLES },
+  // The marketing site: what visitors see, and what they sent us.
+  {
+    key: "website",
+    label: "Website",
+    icon: Globe,
+    roles: WEBSITE_ROLES,
+    children: [
+      { href: "/showcase", label: "Project stories", icon: Images },
+      { href: "/banners", label: "Banners", icon: Megaphone },
+      { href: "/leads", label: "Website enquiries", icon: Inbox },
+    ],
+  },
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
