@@ -103,6 +103,14 @@ export interface Customer extends BaseDocument {
     installationNo?: string;
     verified?: boolean;
   };
+  /** The account the subsidy is paid into, typed off the passbook. */
+  bank?: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifsc?: string;
+    bankName?: string;
+    branch?: string;
+  };
   nameMatch?: {
     consumerName?: string;
     aadhaarName?: string;

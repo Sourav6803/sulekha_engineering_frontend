@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Save, Trash2, Upload } from 'lucide-react';
 import { customersApi } from '@/lib/api/customers.api';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { StepConsumer } from '@/components/features/applications/wizard/StepConsumer';
@@ -12,7 +12,7 @@ import { StepDealLoan } from '@/components/features/applications/wizard/StepDeal
 import { SelectField, StepSection, TextField } from '@/components/features/applications/wizard/WizardFields';
 import { emptyWizardForm, type WizardForm } from '@/components/features/applications/wizard/wizardTypes';
 import type { ApplicationChecklist } from '@/types/application';
-import type { RoofType } from '@/types/customer';
+import type { Customer, CustomerDocument, RoofType } from '@/types/customer';
 
 /**
  * The field visit, recorded as a customer.
@@ -27,7 +27,9 @@ import type { RoofType } from '@/types/customer';
  * to a failed upload is not worth the tidier step.
  */
 
-const STEP_TITLES = ['Consumer', 'Site & address', 'Deal & loan', 'Electricity bill', 'Names'] as const;
+const STEP_TITLES = ['Consumer', 'Site & address', 'Deal & loan', 'Documents', 'Bill', 'Names'] as const;
+const DOCUMENTS_STEP = 3;
+const LAST_STEP = STEP_TITLES.length - 1;
 
 /** Site types the checklist serves; mirrored here so the intake needs no extra call. */
 const SITE_CHECKLIST = {
@@ -46,6 +48,22 @@ const ROOF_OPTIONS = [
   { value: 'ground_mount', label: 'Ground mount' },
 ];
 
+/**
+ * The papers collected at the house, in the order the agent reads them out.
+ *
+ * The types are the customer model's own enum values - `sitePhotoBefore` is the
+ * rooftop photo - because the office carries these onto the application later,
+ * and a kind the customer cannot store would have to be re-shot.
+ */
+const DOCUMENT_SLOTS = [
+  { type: 'aadhar', label: 'Aadhaar card', hint: 'Front and back, one photo' },
+  { type: 'panCard', label: 'PAN card', hint: 'If the consumer has one' },
+  { type: 'passbookOrCheque', label: 'Bank passbook / cheque', hint: 'Page with account number and IFSC' },
+  { type: 'electricBill', label: 'Electricity bill', hint: 'The bill for this connection' },
+  { type: 'sitePhotoBefore', label: 'Rooftop photo', hint: 'The roof where the panels go' },
+  { type: 'landRecord', label: 'Land record', hint: 'Mutation, rent receipt - if asked for' },
+] as const;
+
 const toNumber = (value: string): number | undefined => {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
@@ -60,6 +78,20 @@ export function CustomerIntakeWizard() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('West Bengal');
   const [roofType, setRoofType] = useState<RoofType>('rcc_rooftop');
+
+  const [savingStep, setSavingStep] = useState(false);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<CustomerDocument[]>([]);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  /* Bank details printed on the passbook. Typed rather than read off a photo,
+     because this account is what the subsidy is paid into. */
+  const [bankHolder, setBankHolder] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankBranch, setBankBranch] = useState('');
 
   const errors = useMemo<Record<string, string>>(() => ({}), []);
 
@@ -76,16 +108,7 @@ export function CustomerIntakeWizard() {
     return null;
   };
 
-  const handleSave = async () => {
-    const missing = firstMissing();
-    if (missing) {
-      toast.error(missing);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = {
+  const buildPayload = () => ({
         name: form.consumerName.trim(),
         phone: form.phone.trim(),
         alternatePhone: form.alternatePhone.trim() || undefined,
@@ -132,22 +155,116 @@ export function CustomerIntakeWizard() {
           consumerId: form.electricBill.consumerId.trim() || undefined,
           installationNo: form.electricBill.installationNo.trim() || undefined,
         },
-        nameMatch: {
-          consumerName: form.consumerName.trim(),
-          aadhaarName: form.names.aadhaar.trim() || undefined,
-          passbookName: form.names.passbook.trim() || undefined,
-          electricBillName: form.names.electricBill.trim() || undefined,
-        },
-      };
+    nameMatch: {
+      consumerName: form.consumerName.trim(),
+      aadhaarName: form.names.aadhaar.trim() || undefined,
+      passbookName: form.names.passbook.trim() || undefined,
+      electricBillName: form.names.electricBill.trim() || undefined,
+    },
+    bank: {
+      accountHolderName: bankHolder.trim() || undefined,
+      accountNumber: bankAccount.trim() || undefined,
+      ifsc: bankIfsc.trim() || undefined,
+      bankName: bankName.trim() || undefined,
+      branch: bankBranch.trim() || undefined,
+    },
+  });
 
-      const response = await customersApi.create(payload);
-      const created = (response as { data?: { _id?: string } }).data;
-      if (!created?._id) throw new Error('The server did not return the new customer.');
+  /**
+   * Create the record on first use, update it afterwards.
+   *
+   * Resolves to the customer id, or null when the form is not complete enough to
+   * save - the caller keeps the agent on the current step rather than opening a
+   * documents screen with nothing behind it.
+   */
+  const ensureCustomer = async (): Promise<string | null> => {
+    const missing = firstMissing();
+    if (missing) {
+      toast.error('Finish the basics first', { description: missing });
+      return null;
+    }
 
-      toast.success('Customer saved â€” waiting for office verification', {
-        description: 'Attach the Aadhaar, bill and passbook photos on the customer page.',
+    const payload = buildPayload();
+    if (customerId) {
+      await customersApi.update(customerId, payload);
+      return customerId;
+    }
+
+    const response = await customersApi.create(payload);
+    const created = (response as { data?: Customer }).data;
+    if (!created?._id) throw new Error('The server did not return the new customer.');
+    setCustomerId(created._id);
+    setDocuments(created.documents ?? []);
+    return created._id;
+  };
+
+  /** Documents live on the saved record, so re-read it after every change. */
+  const refreshDocuments = async (id: string) => {
+    const response = await customersApi.get(id);
+    const record = (response as { data?: Customer }).data;
+    setDocuments(record?.documents ?? []);
+  };
+
+  const handleUpload = async (type: string, file: File) => {
+    if (!customerId) {
+      toast.error('Save the customer first');
+      return;
+    }
+    setUploadingType(type);
+    try {
+      const body = new FormData();
+      body.append('type', type);
+      body.append('documents', file);
+      await customersApi.uploadDocument(customerId, body);
+      await refreshDocuments(customerId);
+      toast.success('Document uploaded');
+    } catch (error) {
+      toast.error('Upload failed', { description: handleApiError(error) });
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const handleDelete = async (documentId: string) => {
+    if (!customerId) return;
+    setDeletingId(documentId);
+    try {
+      await customersApi.deleteDocument(customerId, documentId);
+      await refreshDocuments(customerId);
+    } catch (error) {
+      toast.error('Could not remove the file', { description: handleApiError(error) });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleNext = async () => {
+    const next = Math.min(LAST_STEP, step + 1);
+    if (next === DOCUMENTS_STEP && !customerId) {
+      setSavingStep(true);
+      try {
+        const id = await ensureCustomer();
+        if (!id) return;
+      } catch (error) {
+        toast.error('Could not save the customer', { description: handleApiError(error) });
+        return;
+      } finally {
+        setSavingStep(false);
+      }
+    }
+    setStep(next);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const id = await ensureCustomer();
+      if (!id) return;
+      toast.success('Customer saved - waiting for office verification', {
+        description:
+          documents.length === 0 ? 'No documents attached yet.' : `${documents.length} document(s) on file.`,
       });
-      router.push(`/customers/${created._id}`);
+      router.push(`/customers/${id}`);
     } catch (error) {
       toast.error('Could not save the customer', { description: handleApiError(error) });
     } finally {
@@ -155,7 +272,7 @@ export function CustomerIntakeWizard() {
     }
   };
 
-  const isLast = step === STEP_TITLES.length - 1;
+  const documentFor = (type: string) => documents.find((entry) => entry.type === type);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
@@ -202,7 +319,94 @@ export function CustomerIntakeWizard() {
 
           {step === 2 && <StepDealLoan form={form} setForm={setForm} errors={errors} />}
 
-          {step === 3 && (
+          {step === DOCUMENTS_STEP && (
+            <div className="space-y-4">
+              <StepSection
+                title="Documents"
+                description="Photograph each paper at the house. The office reads them here before verifying."
+              >
+                <ul className="space-y-2">
+                  {DOCUMENT_SLOTS.map((slot) => {
+                    const stored = documentFor(slot.type);
+                    return (
+                      <li
+                        key={slot.type}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-[0.9rem] border border-[var(--border-soft)] px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-[var(--foreground)]">{slot.label}</p>
+                          <p className="text-[11px] text-[var(--muted)]">{stored ? stored.fileName : slot.hint}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {stored ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--success)]">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> On file
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(stored._id)}
+                                disabled={deletingId === stored._id}
+                                className="ghost-button !px-2 !py-1.5 text-[var(--danger)]"
+                                aria-label={`Remove ${slot.label}`}
+                              >
+                                {deletingId === stored._id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </>
+                          ) : (
+                            <label className="neutral-button inline-flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-xs">
+                              {uploadingType === slot.type ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Upload className="h-3.5 w-3.5" />
+                              )}
+                              {uploadingType === slot.type ? 'Uploading...' : 'Upload'}
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                disabled={uploadingType !== null}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.target.value = '';
+                                  if (file) void handleUpload(slot.type, file);
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </StepSection>
+
+              <StepSection
+                title="Bank details"
+                description="From the passbook. The subsidy is paid into this account, so it is typed, not guessed."
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField id="bankHolder" label="Account holder" value={bankHolder} onValueChange={setBankHolder} />
+                  <TextField id="bankAccount" label="Account number" value={bankAccount} onValueChange={setBankAccount} />
+                  <TextField
+                    id="bankIfsc"
+                    label="IFSC"
+                    value={bankIfsc}
+                    onValueChange={(value) => setBankIfsc(value.toUpperCase())}
+                  />
+                  <TextField id="bankName" label="Bank" value={bankName} onValueChange={setBankName} />
+                  <TextField id="bankBranch" label="Branch" value={bankBranch} onValueChange={setBankBranch} />
+                </div>
+              </StepSection>
+            </div>
+          )}
+
+          {step === 4 && (
             <StepSection title="Electricity bill" description="The two ids printed on the consumer's bill.">
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
@@ -225,7 +429,7 @@ export function CustomerIntakeWizard() {
             </StepSection>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <StepSection
               title="Names on the papers"
               description="Read the name off each document exactly as printed â€” the office compares them."
@@ -264,7 +468,7 @@ export function CustomerIntakeWizard() {
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
-          {isLast ? (
+          {step === LAST_STEP ? (
             <button
               type="button"
               onClick={handleSave}
@@ -277,9 +481,11 @@ export function CustomerIntakeWizard() {
           ) : (
             <button
               type="button"
-              onClick={() => setStep((current) => Math.min(STEP_TITLES.length - 1, current + 1))}
-              className="primary-button inline-flex items-center gap-1.5 px-4 py-2.5 text-sm"
+              onClick={handleNext}
+              disabled={savingStep}
+              className="primary-button inline-flex items-center gap-1.5 px-4 py-2.5 text-sm disabled:opacity-60"
             >
+              {savingStep ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Next <ArrowRight className="h-4 w-4" />
             </button>
           )}
