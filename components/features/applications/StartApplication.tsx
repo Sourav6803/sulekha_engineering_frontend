@@ -133,8 +133,8 @@ export function StartApplication({ initialCustomerId }: Props) {
   };
 
   return (
-    <div className="panel">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="panel p-6 sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary-active)]">
             Step 1 of 6
@@ -151,7 +151,7 @@ export function StartApplication({ initialCustomerId }: Props) {
         </Link>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <label htmlFor="customer-search" className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
           Find a customer
         </label>
@@ -187,7 +187,7 @@ export function StartApplication({ initialCustomerId }: Props) {
         </div>
       )}
 
-      <div className="mt-5">
+      <div className="mt-6">
         {loading ? (
           <div className="flex items-center gap-2 py-8 text-sm text-[var(--muted)]">
             <Loader2 className="h-4 w-4 animate-spin" /> Looking up customers…
@@ -244,7 +244,7 @@ export function StartApplication({ initialCustomerId }: Props) {
       </div>
 
       {selected && (
-        <div className="mt-5 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+        <div className="mt-6 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[var(--foreground)]">{selected.name}</p>
