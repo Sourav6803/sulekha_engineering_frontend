@@ -43,7 +43,9 @@ export interface Customer extends BaseDocument {
   email?: string;
   address: string;
   village?: string;
+  street?: string;
   block?: string;
+  district?: string;
   panchayat?: string;
   landmark?: string;
   city: string;
@@ -53,6 +55,8 @@ export interface Customer extends BaseDocument {
   roofType: RoofType;
   roofArea?: number;
   gstNumber?: string;
+  /** KYC identifier, 12 digits. Snapshotted onto the application. */
+  aadhaarNumber?: string;
   panNumber?: string;
   preferredInstallationDate?: string;
   preferredTimeSlot?: PreferredTimeSlot;
@@ -67,5 +71,7 @@ export interface Customer extends BaseDocument {
    */
   panelSerialNumbers?: string[];
   createdBy?: string;
+  /** The field agent who collected this customer; agents only see their own. */
+  ownerAgent?: string;
   updatedBy?: string;
 }

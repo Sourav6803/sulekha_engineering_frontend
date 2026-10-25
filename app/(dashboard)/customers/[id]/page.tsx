@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ArrowLeft, Users } from 'lucide-react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
@@ -14,7 +14,7 @@ import { CustomerForm } from '@/components/features/customers/CustomerForm';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { canManageCustomers } from '@/lib/permissions';
+import { canManageCustomers, canStartApplication } from '@/lib/permissions';
 import type { CustomerHistory, CustomerHistorySummary } from '@/lib/api/customers.api';
 import type { Customer } from '@/types/customer';
 import type { InstallationDocument } from '@/types/installation';
@@ -31,6 +31,9 @@ export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
+  /** Set by /customers/new after a save: /customers/<id>?created=1 */
+  const justCreated = useSearchParams().get('created') === '1';
+
   const { user } = useAuth();
   const role = user?.role;
   const canEdit = canManageCustomers(role);
@@ -46,6 +49,16 @@ export default function CustomerDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  /*
+   * Only a verified customer can become an application: the API refuses one
+   * whose papers nobody has checked, so the button is not offered until the
+   * status says otherwise — better a missing button than a refusal on submit.
+   */
+  const fileApplicationHref =
+    canStartApplication(role) && customer?.status === 'active'
+      ? `/applications/new?customerId=${customer._id}`
+      : undefined;
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -175,11 +188,30 @@ export default function CustomerDetailPage() {
         />
       }
     >
+      {/*
+       * Confirmation of the save, shown on the page the operator lands on.
+       * A toast raised from the form fired while that page was unmounting, so
+       * this is the reliable version — the URL says the customer was just made.
+       */}
+      {justCreated && (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--success)] bg-[var(--success-tint)] px-4 py-3 text-sm text-[var(--success)]"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>
+            <span className="font-semibold">{customer.name}</span> was created ({customer.customerId}). Add the
+            documents below, then mark them verified to file the application.
+          </span>
+        </div>
+      )}
+
       <CustomerDetailView
         customer={customer}
         summary={summary}
         installations={installations}
         canEdit={canEdit}
+        fileApplicationHref={fileApplicationHref}
         onEdit={() => {
           setModalError(null);
           setEditOpen(true);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -75,7 +76,6 @@ export default function CustomersPage() {
   };
 
   // ---- Modals & mutations ----
-  const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
   const [formBusy, setFormBusy] = useState(false);
@@ -83,12 +83,7 @@ export default function CustomersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const formOpen = createOpen || Boolean(editing);
-
-  const openCreate = () => {
-    setFormError(null);
-    setCreateOpen(true);
-  };
+  const formOpen = Boolean(editing);
 
   const openEdit = (customer: Customer) => {
     setFormError(null);
@@ -97,25 +92,21 @@ export default function CustomersPage() {
 
   const closeForm = () => {
     if (formBusy) return;
-    setCreateOpen(false);
     setEditing(null);
     setFormError(null);
   };
 
   const handleFormSubmit = useCallback(
-    async (payload: Parameters<typeof createCustomer>[0]) => {
+    // Edit only. Creation is its own page (/customers/new), so this callback
+    // never runs without a record to update.
+    async (payload: Parameters<typeof updateCustomer>[1]) => {
+      if (!editing) return;
       setFormBusy(true);
       setFormError(null);
       try {
-        if (editing) {
-          await updateCustomer(editing._id, payload);
-          toast.success('Customer updated', { description: `"${payload.name ?? editing.name}" has been saved.` });
-        } else {
-          await createCustomer(payload);
-          toast.success('Customer created', { description: `"${payload.name}" has been added.` });
-        }
+        await updateCustomer(editing._id, payload);
+        toast.success('Customer updated', { description: `"${payload.name ?? editing.name}" has been saved.` });
         await fetchCustomers(query);
-        setCreateOpen(false);
         setEditing(null);
       } catch (err) {
         const message = handleApiError(err);
@@ -125,7 +116,7 @@ export default function CustomersPage() {
         setFormBusy(false);
       }
     },
-    [editing, updateCustomer, createCustomer, fetchCustomers, query]
+    [editing, updateCustomer, fetchCustomers, query]
   );
 
   const handleDelete = useCallback(async () => {
@@ -161,10 +152,12 @@ export default function CustomersPage() {
               </p>
             </div>
             {canEdit && (
-              <button type="button" className="brand-button" onClick={openCreate}>
+              // Intake is a page of its own now — it collects KYC, the bill and
+              // the roof photo, which never fitted comfortably in a dialog.
+              <Link href="/customers/new" className="brand-button">
                 <Plus className="h-4 w-4" />
                 New customer
-              </button>
+              </Link>
             )}
           </div>
         </div>
@@ -268,10 +261,10 @@ export default function CustomersPage() {
           canDelete={canDelete}
           emptyAction={
             canEdit ? (
-              <button type="button" className="brand-button" onClick={openCreate}>
+              <Link href="/customers/new" className="brand-button">
                 <Plus className="h-4 w-4" />
                 New customer
-              </button>
+              </Link>
             ) : undefined
           }
         />
@@ -280,12 +273,12 @@ export default function CustomersPage() {
         </div>
       </section>
 
-      {/* Create / Edit modal */}
+      {/* Edit modal — creation lives at /customers/new */}
       <Modal
         open={formOpen}
         onClose={closeForm}
-        title={editing ? 'Edit customer' : 'New customer'}
-        eyebrow={editing ? 'Update customer record' : 'Add to CRM'}
+        title="Edit customer"
+        eyebrow="Update customer record"
         size="lg"
       >
         {formError && (
@@ -293,13 +286,15 @@ export default function CustomersPage() {
             {formError}
           </div>
         )}
-        <CustomerForm
-          key={editing?._id ?? 'create'}
-          initial={editing}
-          mode={editing ? 'edit' : 'create'}
-          submitting={formBusy}
-          onSubmit={handleFormSubmit}
-        />
+        {editing && (
+          <CustomerForm
+            key={editing._id}
+            initial={editing}
+            mode="edit"
+            submitting={formBusy}
+            onSubmit={handleFormSubmit}
+          />
+        )}
       </Modal>
 
       {/* Delete confirm */}

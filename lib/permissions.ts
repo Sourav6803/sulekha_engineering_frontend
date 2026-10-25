@@ -22,9 +22,13 @@ export const canDeleteMaterial = (role?: AuthRole): boolean => (role ? DELETE_RO
 
 /**
  * Customer role gates mirroring backend/src/routes/customer.routes.js:
- * create/update are restricted to admin and manager; delete to admin only.
+ * create/update and document upload are open to agents as well — the field agent
+ * collects the KYC — while delete stays with admin.
+ *
+ * An agent only ever sees the customers they own; that scoping lives in the API
+ * (customer.controller.js), not here.
  */
-const CUSTOMER_EDITOR_ROLES: AuthRole[] = ['admin', 'manager'];
+const CUSTOMER_EDITOR_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
 
 export const canManageCustomers = (role?: AuthRole): boolean => (role ? CUSTOMER_EDITOR_ROLES.includes(role) : false);
 export const canDeleteCustomer = (role?: AuthRole): boolean => (role === 'admin');
@@ -99,15 +103,20 @@ export const canViewApplicationStats = (role?: AuthRole): boolean =>
 export const canViewAgentDashboard = (role?: AuthRole): boolean => role === 'agent';
 
 /**
- * The field half of the application workflow — writing consumer data.
+ * Who may fill in and submit an application.
  *
- * Only the agent who collected the application may open it, edit its fields,
- * upload / replace / delete documents, submit it or discard it. The backend
- * applies `authorize('agent')` (FIELD_AGENT_ROLES) to every one of those routes,
- * so admin and manager are refused with a 403 rather than the edit being hidden
- * on the client alone.
+ * This used to be the agent alone, because the agent typed the consumer's
+ * details. The consumer is now a Customer record collected by an agent or by the
+ * office, and the application is filed from it — so the wizard is the office's
+ * too (backend APPLICATION_WRITE_ROLES). What stays office-only is *starting*
+ * one: a verified customer becomes an application only when admin or manager
+ * decides it does (see canStartApplication).
  */
-export const canEditApplication = (role?: AuthRole): boolean => role === 'agent';
+export const canEditApplication = (role?: AuthRole): boolean =>
+  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
+
+/** Filing a new application from a verified customer — office only. */
+export const canStartApplication = (role?: AuthRole): boolean => role === 'admin' || role === 'manager';
 
 /**
  * The office half of the application workflow — judging, not typing.

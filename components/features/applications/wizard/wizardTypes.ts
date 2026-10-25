@@ -41,6 +41,11 @@ export interface WizardStepProps {
   /** Dotted field path → the real message the API returned for it. */
   errors: Record<string, string>;
   disabled?: boolean;
+  /**
+   * The saved application. Several steps are now read-only summaries of the
+   * customer record, and this is where the link back to that record comes from.
+   */
+  application?: ApplicationDocument | null;
 }
 
 /**

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ import {
 import { useApplications } from '@/hooks/useApplications';
 import { useAgents } from '@/hooks/useAgents';
 import { useAuth } from '@/hooks/useAuth';
-import { canEditApplication, canManageAgents, canViewApplications } from '@/lib/permissions';
+import { canManageAgents, canStartApplication, canViewApplications } from '@/lib/permissions';
 import type { SortOrder } from '@/components/shared/DataTable';
 import type { ApplicationChecklist, ApplicationListQuery, ApplicationStatus } from '@/types/application';
 
@@ -28,9 +28,10 @@ export default function ApplicationsPage() {
   const role = user?.role;
   const allowed = canViewApplications(role);
   const isOversight = role === 'admin' || role === 'manager';
-  // Only a field agent may draft or change an application, so the office never
-  // sees the "New application" entry point at all.
-  const canFileApplication = canEditApplication(role);
+  // Filing is the office's decision now: a verified customer becomes an
+  // application, so the entry point is shown to admin and manager only. An agent
+  // still reads their customers' applications from this list.
+  const canFileApplication = canStartApplication(role);
   // Only an admin may list agents (/agents is admin-only), so the agent filter
   // is an admin tool; a manager sees everyone's applications without it.
   const canFilterByAgent = canManageAgents(role);
@@ -48,7 +49,7 @@ export default function ApplicationsPage() {
   const [checklist, setChecklist] = useState<ApplicationChecklist | null>(null);
   const [preCheckOpen, setPreCheckOpen] = useState(false);
 
-  // Debounced search → query.
+  // Debounced search â†’ query.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setQuery((prev) => ({ ...prev, search: searchInput.trim() || undefined, page: 1 }));

@@ -68,6 +68,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className="h-full antialiased"
       suppressHydrationWarning={true}
     >
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@600;700;800&family=Poppins:wght@700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+
       <body suppressHydrationWarning className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         {children}
         <Toaster

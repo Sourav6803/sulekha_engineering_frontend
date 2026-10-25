@@ -352,8 +352,10 @@ export interface ApplicationDetail {
 
 /** POST /applications — the two fields that must be present to open a draft. */
 export interface ApplicationCreatePayload {
-  consumerName: string;
-  phone: string;
+  /** The verified customer this application is being filed for. Required. */
+  customer: string;
+  consumerName?: string;
+  phone?: string;
   alternatePhone?: string | null;
   aadhaarNumber?: string | null;
   panNumber?: string | null;

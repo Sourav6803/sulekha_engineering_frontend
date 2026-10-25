@@ -1,7 +1,8 @@
 'use client';
 
-import { MapPin } from 'lucide-react';
-import { SelectField, StepSection, TextAreaField, TextField } from './WizardFields';
+import Link from 'next/link';
+import { ExternalLink, MapPin } from 'lucide-react';
+import { SelectField, StepSection, TextAreaField } from './WizardFields';
 import type { ApplicationChecklist, ApplicationSiteType } from '@/types/application';
 import type { WizardStepProps } from './wizardTypes';
 
@@ -11,106 +12,83 @@ interface StepSiteProps extends WizardStepProps {
   checklistError: string | null;
 }
 
+/** Populated or raw id, depending on what the API returned. */
+function customerIdOf(application: WizardStepProps['application']): string | null {
+  const customer = application?.customer;
+  if (!customer) return null;
+  if (typeof customer === 'string') return customer;
+  const id = (customer as { _id?: string })._id;
+  return typeof id === 'string' ? id : null;
+}
+
 /**
- * Step 2 — where the system goes.
+ * Step 2 — the address as recorded, and where on the property the system goes.
  *
- * The site types come from GET /applications/checklist, never a hardcoded list,
- * so a new mounting case (the checklist already carries `high_rise_structure`)
- * appears here the moment the server learns about it.
+ * The address is read-only: it was written down once, at the customer's house,
+ * and is copied onto the application at creation. Retyping it here is how the
+ * KYC and the scheme paperwork drift apart.
+ *
+ * The site type stays editable — it is a decision about this particular job
+ * (RCC rooftop, tin shed, high-rise), and the mounting design hangs off it. The
+ * options come from GET /applications/checklist, never a hardcoded list.
  */
-export function StepSite({ form, setForm, errors, disabled, checklist, checklistLoading, checklistError }: StepSiteProps) {
+export function StepSite({
+  form,
+  setForm,
+  errors,
+  disabled,
+  application,
+  checklist,
+  checklistLoading,
+  checklistError,
+}: StepSiteProps) {
   const siteTypeOptions = (checklist?.siteTypes ?? []).map((site) => ({
     value: site.value,
     label: site.label,
   }));
 
+  const customerId = customerIdOf(application);
+
+  const addressRows: Array<{ label: string; value: string }> = [
+    { label: 'Street / house', value: form.address.street },
+    { label: 'Village', value: form.address.village },
+    { label: 'Block', value: form.address.block },
+    { label: 'Panchayat', value: form.address.panchayat },
+    { label: 'District', value: form.address.district },
+    { label: 'Landmark', value: form.address.landmark },
+    { label: 'Pincode', value: form.address.pincode },
+  ];
+
   return (
     <div className="space-y-4">
-      <StepSection title="Site address" description="The six fields on the printed checklist, plus the landmark.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <TextField
-              id="site-street"
-              label="Street / house"
-              required
-              value={form.address.street}
-              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, street: value } }))}
-              placeholder="House no, road, para"
-              maxLength={200}
-              error={errors['address.street']}
-              disabled={disabled}
-            />
-          </div>
+      <StepSection title="Site address" description="As collected for this customer — carried over, not retyped.">
+        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {addressRows.map((row) => (
+            <div key={row.label} className="min-w-0">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                {row.label}
+              </dt>
+              <dd
+                className={`mt-0.5 truncate text-sm ${
+                  row.value ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted-soft)]'
+                }`}
+                title={row.value || undefined}
+              >
+                {row.value || '—'}
+              </dd>
+            </div>
+          ))}
+        </dl>
 
-          <TextField
-            id="site-village"
-            label="Village"
-            required
-            value={form.address.village}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, village: value } }))}
-            maxLength={100}
-            error={errors['address.village']}
-            disabled={disabled}
-          />
-
-          <TextField
-            id="site-block"
-            label="Block"
-            required
-            value={form.address.block}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, block: value } }))}
-            maxLength={100}
-            error={errors['address.block']}
-            disabled={disabled}
-          />
-
-          <TextField
-            id="site-panchayat"
-            label="Panchayat"
-            required
-            value={form.address.panchayat}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, panchayat: value } }))}
-            maxLength={100}
-            error={errors['address.panchayat']}
-            disabled={disabled}
-          />
-
-          <TextField
-            id="site-district"
-            label="District"
-            required
-            value={form.address.district}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, district: value } }))}
-            maxLength={100}
-            error={errors['address.district']}
-            disabled={disabled}
-          />
-
-          <TextField
-            id="site-landmark"
-            label="Landmark"
-            required
-            value={form.address.landmark}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, landmark: value } }))}
-            placeholder="Nearest school, temple, shop"
-            maxLength={200}
-            error={errors['address.landmark']}
-            disabled={disabled}
-          />
-
-          <TextField
-            id="site-pincode"
-            label="Pincode"
-            required
-            value={form.address.pincode}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, pincode: value } }))}
-            placeholder="6 digits"
-            inputMode="numeric"
-            maxLength={6}
-            error={errors['address.pincode']}
-            disabled={disabled}
-          />
-        </div>
+        {customerId && (
+          <Link
+            href={`/customers/${customerId}`}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--primary-active)] hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Correct the address on the customer record
+          </Link>
+        )}
       </StepSection>
 
       <StepSection title="Installation site" description="Drives the mounting design, so it is asked at the visit.">
@@ -161,7 +139,7 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--secondary)]" />
           <span className="min-w-0">
             A high-rise structure needs a different mounting design from a plain RCC rooftop, so pick the site type
-            carefully — the roof photo (next step) should match it.
+            carefully — the roof photo on the customer record should match it.
           </span>
         </p>
       </StepSection>

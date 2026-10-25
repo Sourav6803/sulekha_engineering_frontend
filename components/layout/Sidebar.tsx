@@ -68,6 +68,13 @@ const OFFICE_ROLES: AuthRole[] = [
 /** Applications are shared by the field agents and the roles that oversee them. */
 const APPLICATION_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
 
+/**
+ * Customers are the agent's own work now — they collect the KYC, so the list is
+ * theirs to open. The API scopes an agent to the records they own, so this entry
+ * never becomes a window into another agent's customers.
+ */
+const CUSTOMER_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
+
 /** Agent accounts are created and managed by the admin alone. */
 const AGENT_ADMIN_ROLES: AuthRole[] = ['admin'];
 
@@ -83,11 +90,13 @@ const WEBSITE_ROLES: AuthRole[] = ['admin', 'manager'];
  */
 const NAV_ENTRIES: NavEntry[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  /* Customers first: it is where the work starts now — collect the KYC, then
+     the office files the application from that record. */
+  { href: "/customers", label: "Customers", icon: Users, roles: CUSTOMER_ROLES },
   { href: "/applications", label: "Applications", icon: ClipboardCheck, roles: APPLICATION_ROLES },
   { href: "/agents", label: "Agents", icon: UserCog, roles: AGENT_ADMIN_ROLES },
   { href: "/materials", label: "Materials", icon: Package, roles: OFFICE_ROLES },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: OFFICE_ROLES },
-  { href: "/customers", label: "Customers", icon: Users, roles: OFFICE_ROLES },
   { href: "/installations", label: "Installations", icon: Wrench, roles: OFFICE_ROLES },
   {
     key: "quotation",

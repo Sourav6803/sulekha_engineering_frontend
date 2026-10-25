@@ -32,6 +32,7 @@ interface FormState {
   address: string;
   village: string;
   block: string;
+  district: string;
   panchayat: string;
   landmark: string;
   city: string;
@@ -41,6 +42,7 @@ interface FormState {
   roofType: RoofType | '';
   roofArea: string;
   gstNumber: string;
+  aadhaarNumber: string;
   panNumber: string;
   preferredInstallationDate: string;
   preferredTimeSlot: PreferredTimeSlot | '';
@@ -57,6 +59,7 @@ const emptyForm = (): FormState => ({
   address: '',
   village: '',
   block: '',
+  district: '',
   panchayat: '',
   landmark: '',
   city: '',
@@ -66,6 +69,7 @@ const emptyForm = (): FormState => ({
   roofType: '',
   roofArea: '',
   gstNumber: '',
+  aadhaarNumber: '',
   panNumber: '',
   preferredInstallationDate: '',
   preferredTimeSlot: '',
@@ -92,6 +96,7 @@ function fromCustomer(customer: Customer): FormState {
     address: customer.address ?? '',
     village: customer.village ?? '',
     block: customer.block ?? '',
+  district: customer.district ?? '',
     panchayat: customer.panchayat ?? '',
     landmark: customer.landmark ?? '',
     city: customer.city ?? '',
@@ -101,7 +106,8 @@ function fromCustomer(customer: Customer): FormState {
     roofType: customer.roofType ?? '',
     roofArea: customer.roofArea != null ? String(customer.roofArea) : '',
     gstNumber: customer.gstNumber ?? '',
-    panNumber: customer.panNumber ?? '',
+    aadhaarNumber: customer.aadhaarNumber ?? '',
+  panNumber: customer.panNumber ?? '',
     preferredInstallationDate: toLocalDateInput(customer.preferredInstallationDate),
     preferredTimeSlot: customer.preferredTimeSlot ?? '',
     status: customer.status ?? '',
@@ -189,6 +195,8 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
 
     if (form.gstNumber.trim() && !GST_RE.test(form.gstNumber.trim())) return 'Please enter a valid GST number.';
     if (form.panNumber.trim() && !PAN_RE.test(form.panNumber.trim())) return 'Please enter a valid PAN number.';
+    if (form.aadhaarNumber.trim() && !/^[0-9]{12}$/.test(form.aadhaarNumber.trim()))
+      return 'Aadhaar number must be 12 digits.';
     if (form.notes.length > 1000) return 'Notes cannot exceed 1000 characters.';
 
     return null;
@@ -210,6 +218,7 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
       address: form.address.trim(),
       village: form.village.trim() || undefined,
       block: form.block.trim() || undefined,
+  district: form.district.trim() || undefined,
       panchayat: form.panchayat.trim() || undefined,
       landmark: form.landmark.trim() || undefined,
       city: form.city.trim(),
@@ -219,7 +228,8 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
       roofType: form.roofType as RoofType,
       roofArea: toNumber(form.roofArea),
       gstNumber: form.gstNumber.trim().toUpperCase() || undefined,
-      panNumber: form.panNumber.trim().toUpperCase() || undefined,
+      aadhaarNumber: form.aadhaarNumber.trim() || undefined,
+  panNumber: form.panNumber.trim().toUpperCase() || undefined,
       preferredInstallationDate: form.preferredInstallationDate || undefined,
       preferredTimeSlot: (form.preferredTimeSlot as PreferredTimeSlot) || undefined,
       notes: form.notes.trim() || undefined,
@@ -302,6 +312,16 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
               placeholder="10-digit mobile number"
             />
           </Field>
+          <Field label="Aadhaar number" hint="12 digits — copied onto the application">
+            <input
+              className={inputClass}
+              inputMode="numeric"
+              maxLength={12}
+              value={form.aadhaarNumber}
+              onChange={(e) => set('aadhaarNumber', e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Optional at intake, required before filing"
+            />
+          </Field>
           <Field label="Alternate phone">
             <input
               className={inputClass}
@@ -375,6 +395,15 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
               onChange={(e) => set('landmark', e.target.value)}
               placeholder="Nearby landmark"
               maxLength={200}
+            />
+          </Field>
+          <Field label="District" hint="Carried onto the application and the discom paperwork">
+            <input
+              className={inputClass}
+              value={form.district}
+              onChange={(e) => set('district', e.target.value)}
+              placeholder="e.g. Purba Bardhaman"
+              maxLength={100}
             />
           </Field>
           <Field label="City" required>

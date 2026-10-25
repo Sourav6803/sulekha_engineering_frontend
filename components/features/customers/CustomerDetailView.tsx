@@ -37,6 +37,8 @@ interface CustomerDetailViewProps {
   loading?: boolean;
   canEdit?: boolean;
   onEdit?: () => void;
+  /** Set when this role may turn a verified customer into an application. */
+  fileApplicationHref?: string;
   onRefetch?: () => void;
   /** Saves the panel serial list on its own, without opening the edit modal. */
   onSavePanelSerials?: (serials: string[]) => Promise<void>;
@@ -165,13 +167,14 @@ export function CustomerDetailView({
   loading = false,
   canEdit = false,
   onEdit,
+  fileApplicationHref,
   onRefetch,
   onSavePanelSerials,
 }: CustomerDetailViewProps) {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   const documents = customer.documents ?? [];
-  const fullAddress = [customer.address, customer.city, customer.state, customer.pincode]
+  const fullAddress = [customer.address, customer.city, customer.district, customer.state, customer.pincode]
     .filter(Boolean)
     .join(', ');
 
@@ -196,7 +199,13 @@ export function CustomerDetailView({
 
   return (
     <div className="space-y-6">
-      <CustomerHero customer={customer} summary={summary} canEdit={canEdit} onEdit={onEdit} />
+      <CustomerHero
+        customer={customer}
+        summary={summary}
+        canEdit={canEdit}
+        onEdit={onEdit}
+        fileApplicationHref={fileApplicationHref}
+      />
 
       <ApplicationJourney customer={customer} installations={installations} />
 
@@ -368,6 +377,7 @@ export function CustomerDetailView({
             <Field label="Address" value={fullAddress} />
             <Field label="Village" value={customer.village} />
             <Field label="Block" value={customer.block} />
+            <Field label="District" value={customer.district} />
             <Field label="Panchayat" value={customer.panchayat} />
             <Field label="Landmark" value={customer.landmark} />
           </FieldGroup>

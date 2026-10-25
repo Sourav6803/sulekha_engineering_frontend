@@ -12,6 +12,7 @@ import {
   Sun,
   Wrench,
   Zap,
+  FilePlus2,
 } from 'lucide-react';
 import { formatDateShort, formatINR, formatNumber } from '@/lib/format';
 import { customerStatusStyle, ROOF_TYPE_LABEL } from './customerStatus';
@@ -23,6 +24,11 @@ interface CustomerHeroProps {
   summary: CustomerHistorySummary;
   canEdit: boolean;
   onEdit?: () => void;
+  /**
+   * Where "File application" goes, or undefined when this role/record cannot
+   * start one (agent, or a customer whose papers are still unverified).
+   */
+  fileApplicationHref?: string;
 }
 
 /**
@@ -56,11 +62,13 @@ const KPI_ACCENTS = {
  * Split out of CustomerDetailView so that file stays about record-keeping —
  * documents, serials, installations — rather than about presentation.
  */
-export function CustomerHero({ customer, summary, canEdit, onEdit }: CustomerHeroProps) {
+export function CustomerHero({ customer, summary, canEdit, onEdit, fileApplicationHref }: CustomerHeroProps) {
   const status = customerStatusStyle(customer.status);
 
   const location = [customer.village, customer.block].filter(Boolean).join(' · ');
-  const fullAddress = [customer.address, customer.city, customer.state, customer.pincode]
+  // District sits between town and state: it is what the discom paperwork is
+  // keyed on, so it belongs in the address the office reads aloud.
+  const fullAddress = [customer.address, customer.city, customer.district, customer.state, customer.pincode]
     .filter(Boolean)
     .join(', ');
 
@@ -188,6 +196,17 @@ export function CustomerHero({ customer, summary, canEdit, onEdit }: CustomerHer
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
+            {/* The hand-off to the scheme paperwork: this record, once verified,
+                becomes an application. */}
+            {fileApplicationHref && (
+              <Link
+                href={fileApplicationHref}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-semibold text-[#3A2A00] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-lg)] active:scale-[0.98]"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                File application
+              </Link>
+            )}
             {canEdit && onEdit && (
               <button
                 type="button"
