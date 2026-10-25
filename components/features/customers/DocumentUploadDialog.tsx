@@ -27,6 +27,7 @@ const ALL_DOCUMENT_TYPES = [
   { value: 'eToken', label: 'eToken', icon: '🎫', required: false },
   { value: 'acknowledgement', label: 'Acknowledgement', icon: '🧾', required: false },
   { value: 'netMetering', label: 'Net Metering', icon: '🔌', required: false },
+  { value: 'casteCertificate', label: 'Caste Certificate', icon: '📜', required: false },
 ] as const;
 
 interface DocumentUploadDialogProps {
@@ -35,17 +36,32 @@ interface DocumentUploadDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /**
+   * Types this user may file. Omitted means the full catalogue — the office's
+   * own papers (DCR, panel serials, quotation, agreement) included.
+   */
+  allowedTypes?: readonly string[];
 }
 
-export function DocumentUploadDialog({ customerId, existingDocuments, open, onClose, onSuccess }: DocumentUploadDialogProps) {
+export function DocumentUploadDialog({
+  customerId,
+  existingDocuments,
+  open,
+  onClose,
+  onSuccess,
+  allowedTypes,
+}: DocumentUploadDialogProps) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [filesByType, setFilesByType] = useState<Record<string, File[]>>({});
   const [uploading, setUploading] = useState(false);
 
   const uploadedTypes = useMemo(() => new Set(existingDocuments.map(d => d.type)), [existingDocuments]);
-  const availableTypes = useMemo(() => 
-    ALL_DOCUMENT_TYPES.filter(t => !uploadedTypes.has(t.value)),
-    [uploadedTypes]
+  const availableTypes = useMemo(
+    () =>
+      ALL_DOCUMENT_TYPES.filter(
+        (t) => !uploadedTypes.has(t.value) && (!allowedTypes || allowedTypes.includes(t.value)),
+      ),
+    [uploadedTypes, allowedTypes],
   );
 
   if (!open) return null;

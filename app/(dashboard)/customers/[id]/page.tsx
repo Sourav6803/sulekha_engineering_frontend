@@ -236,6 +236,7 @@ export default function CustomerDetailPage() {
         canEdit={canEdit}
         fileApplicationHref={fileApplicationHref}
         canVerify={canVerify}
+        canUploadOfficeDocs={canVerify}
         onVerify={handleVerify}
         verifying={verifying}
         onEdit={() => {

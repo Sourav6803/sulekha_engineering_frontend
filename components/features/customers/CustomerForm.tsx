@@ -5,6 +5,8 @@ import type { CreateCustomerDto, UpdateCustomerDto } from '@/lib/api/customers.a
 import type { Customer, CustomerStatus, PreferredTimeSlot, RoofType } from '@/types/customer';
 import { toast } from 'sonner';
 import { customersApi } from '@/lib/api/customers.api';
+import { useAuth } from '@/hooks/useAuth';
+import { DOCUMENT_CATALOGUE, FIELD_DOCUMENT_TYPES } from './documentCatalogue';
 
 const ROOF_TYPES: RoofType[] = ['rcc_rooftop', 'tin_shed', 'ground_mount'];
 const TIME_SLOTS: PreferredTimeSlot[] = ['morning', 'afternoon', 'evening', 'anytime'];
@@ -156,6 +158,14 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
   const [documentType, setDocumentType] = useState<string>('');
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+
+  /* An agent files only what was collected at the house. DCR, panel serials,
+     quotation, agreement and the rest are the office's papers. */
+  const { user } = useAuth();
+  const canUploadOfficeDocs = user?.role === 'admin' || user?.role === 'manager';
+  const documentTypeOptions = DOCUMENT_CATALOGUE.filter(
+    (item) => canUploadOfficeDocs || FIELD_DOCUMENT_TYPES.includes(item.type),
+  );
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -622,21 +632,11 @@ export function CustomerForm({ initial, mode, submitting = false, onSubmit, onRe
                 onChange={(e) => setDocumentType(e.target.value)}
               >
                 <option value="">Select document type</option>
-                <option value="aadhar">Aadhar</option>
-                <option value="voterId">Voter ID</option>
-                <option value="panCard">PAN Card</option>
-                <option value="passbookOrCheque">Passbook / Cheque</option>
-                <option value="electricBill">Electric Bill</option>
-                <option value="landRecord">Land Record</option>
-                <option value="sitePhotoBefore">Site Photo Before</option>
-                <option value="sitePhotoAfter">Site Photo After</option>
-                <option value="loanApprovalLetter">Loan Approval Letter</option>
-                <option value="rtsFeasibilityReport">RTS Feasibility Report</option>
-                <option value="feasibilityApproval">Feasibility Approval</option>
-                <option value="agreement">Agreement</option>
-                <option value="quotation">Quotation</option>
-                <option value="dcrCertificate">DCR Certificate</option>
-                <option value="panelSerialNumber">Panel Serial Number</option>
+                {documentTypeOptions.map((item) => (
+                  <option key={item.type} value={item.type}>
+                    {item.label}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Files">

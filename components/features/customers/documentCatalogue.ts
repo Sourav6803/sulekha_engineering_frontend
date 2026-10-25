@@ -44,6 +44,24 @@ export const DOCUMENT_CATALOGUE: readonly CatalogueItem[] = [
   { type: 'casteCertificate', label: 'Caste Cert', required: false },
 ];
 
+/**
+ * What the field agent collects at the consumer's house.
+ *
+ * Everything else in the catalogue — DCR certificate, panel serials, quotation,
+ * agreement, feasibility papers, eToken and the rest — is produced or received
+ * later in the office's own process, so an agent has no business uploading it.
+ * Mirrored on the server: `FIELD_UPLOAD_TYPES` in the customer controller.
+ */
+export const FIELD_DOCUMENT_TYPES: readonly CustomerDocument['type'][] = [
+  'aadhar',
+  'panCard',
+  'passbookOrCheque',
+  'electricBill',
+  'sitePhotoBefore',
+  'landRecord',
+  'casteCertificate',
+];
+
 /** The subset that has to be on file before an application is complete. */
 export const REQUIRED_DOCUMENT_TYPES: readonly CustomerDocument['type'][] = DOCUMENT_CATALOGUE.filter(
   (item) => item.required,

@@ -23,7 +23,7 @@ import {
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDateShort, formatINR, formatNumber } from '@/lib/format';
 import { customerStatusStyle, ROOF_TYPE_LABEL, TIME_SLOT_LABEL } from './customerStatus';
-import { DOCUMENT_CATALOGUE, uploadedDocumentTypes } from './documentCatalogue';
+import { DOCUMENT_CATALOGUE, FIELD_DOCUMENT_TYPES, uploadedDocumentTypes } from './documentCatalogue';
 import { CustomerHero } from './CustomerHero';
 import { ApplicationJourney } from './ApplicationJourney';
 import { SchemeReferenceCard } from './SchemeReferenceCard';
@@ -45,6 +45,8 @@ interface CustomerDetailViewProps {
   fileApplicationHref?: string;
   /** Set when this role may clear the intake (admin / manager). */
   canVerify?: boolean;
+  /** Admin/manager may also file the office's own papers on a customer. */
+  canUploadOfficeDocs?: boolean;
   onVerify?: () => void;
   verifying?: boolean;
   onRefetch?: () => void;
@@ -191,6 +193,7 @@ export function CustomerDetailView({
   onEdit,
   fileApplicationHref,
   canVerify = false,
+  canUploadOfficeDocs = false,
   onVerify,
   verifying = false,
   onRefetch,
@@ -682,6 +685,9 @@ export function CustomerDetailView({
           onSuccess={() => {
             onRefetch?.();
           }}
+          /* An agent files only what was collected at the house; the office's own
+             papers (DCR, serials, quotation, agreement) stay admin/manager-only. */
+          allowedTypes={canUploadOfficeDocs ? undefined : FIELD_DOCUMENT_TYPES}
         />
       )}
     </div>
