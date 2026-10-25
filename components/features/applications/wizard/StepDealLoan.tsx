@@ -190,6 +190,51 @@ export function StepDealLoan({ form, setForm, errors, disabled }: WizardStepProp
             </div>
           )}
 
+          {/* No live loan: record the loan the consumer is asking for, so the
+              office has the amount and the lender before it quotes. */}
+          {hasExistingLoan === false && (
+            <div className="grid gap-4 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 sm:grid-cols-3">
+              <div className="sm:col-span-3">
+                <p className="text-[11px] leading-5 text-[var(--muted)]">
+                  No live loan. Fill what the consumer is asking for, if anything — the office uses it for the quote.
+                </p>
+              </div>
+              <div className="sm:col-span-3">
+                <TextField
+                  id="loan-lender-expected"
+                  label="Lender / bank expected"
+                  value={form.loan.lenderName}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, loan: { ...prev.loan, lenderName: value } }))}
+                  placeholder="e.g. SBI, Bangiya Gramin Vikash Bank"
+                  maxLength={200}
+                  error={errors['loan.lenderName']}
+                  disabled={disabled}
+                  compact
+                />
+              </div>
+              <TextField
+                id="loan-amount"
+                label="Loan amount asked (₹)"
+                value={form.loan.loanAmount}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, loan: { ...prev.loan, loanAmount: value } }))}
+                inputMode="numeric"
+                error={errors['loan.loanAmount']}
+                disabled={disabled}
+                compact
+              />
+              <TextField
+                id="loan-emi-expected"
+                label="Expected EMI (₹)"
+                value={form.loan.monthlyEmi}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, loan: { ...prev.loan, monthlyEmi: value } }))}
+                inputMode="numeric"
+                error={errors['loan.monthlyEmi']}
+                disabled={disabled}
+                compact
+              />
+            </div>
+          )}
+
           <CheckboxField
             id="loan-informed"
             label="I explained to the consumer how a running loan affects the subsidy."

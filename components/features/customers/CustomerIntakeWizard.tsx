@@ -79,6 +79,9 @@ export function CustomerIntakeWizard() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('West Bengal');
   const [roofType, setRoofType] = useState<RoofType>('rcc_rooftop');
+  /** Available roof area in square feet — drives the panel count. */
+  const [roofArea, setRoofArea] = useState('');
+
 
   const [savingStep, setSavingStep] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -132,6 +135,7 @@ export function CustomerIntakeWizard() {
         pincode: form.address.pincode.trim(),
         systemSizeKW: toNumber(form.deal.systemSizeKW),
         roofType,
+    roofArea: toNumber(roofArea),
         siteType: form.siteType || null,
         siteNotes: form.siteNotes.trim() || undefined,
         deal: {
@@ -143,6 +147,7 @@ export function CustomerIntakeWizard() {
           asked: form.loan.asked,
           hasExistingLoan: form.loan.hasExistingLoan,
           lenderName: form.loan.lenderName.trim() || undefined,
+          loanAmount: toNumber(form.loan.loanAmount),
           outstandingAmount: toNumber(form.loan.outstandingAmount),
           monthlyEmi: toNumber(form.loan.monthlyEmi),
           consumerInformed: form.loan.consumerInformed,
@@ -388,6 +393,14 @@ export function CustomerIntakeWizard() {
                     onValueChange={(value) => setRoofType(value as RoofType)}
                     options={ROOF_OPTIONS}
                     required
+                  />
+                  <TextField
+                    id="roofArea"
+                    label="Roof area (sq ft)"
+                    value={roofArea}
+                    onValueChange={setRoofArea}
+                    inputMode="numeric"
+                    hint="Usable area on the roof, for the panel count."
                   />
                 </div>
               </StepSection>

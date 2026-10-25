@@ -61,6 +61,13 @@ const INSTALL_STATUS: Record<InstallationStatus, { label: string; className: str
   cancelled: { label: 'Cancelled', className: 'badge-error' },
 };
 
+const SITE_TYPE_LABEL: Record<string, string> = {
+  rcc_rooftop: 'RCC rooftop',
+  tin_shed: 'Tin shed',
+  high_rise_structure: 'High-rise structure',
+  ground_mount: 'Ground mount',
+};
+
 /** Shared card header: gradient icon tile, title, supporting line. */
 function SectionHeader({
   icon: Icon,
@@ -431,6 +438,8 @@ export function CustomerDetailView({
               value={customer.roofArea != null ? `${formatNumber(customer.roofArea)} sq ft` : '—'}
             />
             <Field label="Roof type" value={ROOF_TYPE_LABEL[customer.roofType] ?? customer.roofType} />
+            <Field label="Site type" value={SITE_TYPE_LABEL[customer.siteType ?? ''] ?? customer.siteType} />
+            <Field label="Site notes" value={customer.siteNotes} />
             <Field
               label="Preferred date"
               value={
@@ -468,10 +477,26 @@ export function CustomerDetailView({
             <Field label="Existing loan" value={customer.loan?.hasExistingLoan ? 'Yes' : 'No'} />
             <Field label="Lender" value={customer.loan?.lenderName} />
             <Field
+              label="Loan asked for"
+              value={customer.loan?.loanAmount != null ? formatINR(customer.loan.loanAmount) : '—'}
+            />
+            <Field
+              label="EMI"
+              value={customer.loan?.monthlyEmi != null ? formatINR(customer.loan.monthlyEmi) : '—'}
+            />
+            <Field
               label="Outstanding"
               value={customer.loan?.outstandingAmount != null ? formatINR(customer.loan.outstandingAmount) : '—'}
             />
             <Field label="Credit score" value={customer.creditCheck?.score} />
+            <Field
+              label="Credit status"
+              value={
+                customer.creditCheck?.status && customer.creditCheck.status !== 'not_checked'
+                  ? customer.creditCheck.status
+                  : '—'
+              }
+            />
           </FieldGroup>
 
           <FieldGroup

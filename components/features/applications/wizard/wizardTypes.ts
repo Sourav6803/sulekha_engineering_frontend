@@ -85,6 +85,8 @@ export interface WizardForm {
     asked: boolean;
     hasExistingLoan: boolean | null;
     lenderName: string;
+    /** The loan being asked for, as opposed to one already running. */
+    loanAmount: string;
     outstandingAmount: string;
     monthlyEmi: string;
     consumerInformed: boolean;
@@ -149,6 +151,7 @@ export function emptyWizardForm(): WizardForm {
       asked: false,
       hasExistingLoan: null,
       lenderName: '',
+      loanAmount: '',
       outstandingAmount: '',
       monthlyEmi: '',
       consumerInformed: false,
@@ -222,6 +225,7 @@ export function formFromApplication(application: ApplicationDocument): WizardFor
       asked: Boolean(application.loan?.asked),
       hasExistingLoan: application.loan?.hasExistingLoan ?? null,
       lenderName: application.loan?.lenderName ?? '',
+      loanAmount: application.loan?.loanAmount != null ? String(application.loan.loanAmount) : '',
       outstandingAmount:
         application.loan?.outstandingAmount != null ? String(application.loan.outstandingAmount) : '',
       monthlyEmi: application.loan?.monthlyEmi != null ? String(application.loan.monthlyEmi) : '',
@@ -299,6 +303,7 @@ export function buildStepPayload(step: number, form: WizardForm): ApplicationUpd
           asked: form.loan.asked,
           hasExistingLoan: form.loan.hasExistingLoan,
           lenderName: trimOrNull(form.loan.lenderName),
+          loanAmount: numberOrNull(form.loan.loanAmount),
           outstandingAmount: numberOrNull(form.loan.outstandingAmount),
           monthlyEmi: numberOrNull(form.loan.monthlyEmi),
           consumerInformed: form.loan.consumerInformed,
