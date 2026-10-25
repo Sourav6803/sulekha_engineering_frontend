@@ -61,6 +61,13 @@ const INSTALL_STATUS: Record<InstallationStatus, { label: string; className: str
   cancelled: { label: 'Cancelled', className: 'badge-error' },
 };
 
+const CREDIT_METHOD_LABEL: Record<string, string> = {
+  consumer_self_check: 'Consumer self-check',
+  bank_portal: 'Bank portal',
+  agent_estimate: 'Agent estimate',
+  other: 'Other',
+};
+
 const SITE_TYPE_LABEL: Record<string, string> = {
   rcc_rooftop: 'RCC rooftop',
   tin_shed: 'Tin shed',
@@ -426,6 +433,29 @@ export function CustomerDetailView({
             <Field label="PAN number" value={customer.panNumber} />
             <Field label="GST number" value={customer.gstNumber} />
             <Field label="Referred by" value={customer.referredBy} />
+            {/* The office's clearance, with its audit trail — who cleared the
+                papers and when is the first thing an audit asks for. */}
+            <Field
+              label="Verification"
+              value={
+                <span
+                  className={`badge-pill ${
+                    customer.verification?.status === 'verified'
+                      ? 'bg-[var(--success-tint)] text-[var(--success)]'
+                      : customer.verification?.status === 'rejected'
+                        ? 'bg-[var(--error-tint)] text-[var(--error)]'
+                        : 'bg-[var(--warning-tint)] text-[var(--warning)]'
+                  }`}
+                >
+                  {(customer.verification?.status ?? 'pending').toUpperCase()}
+                </span>
+              }
+            />
+            <Field
+              label="Verified on"
+              value={customer.verification?.at ? formatDateShort(customer.verification.at) : undefined}
+            />
+            <Field label="Verification note" value={customer.verification?.note} />
           </FieldGroup>
 
           <FieldGroup
@@ -475,6 +505,7 @@ export function CustomerDetailView({
             <Field label="Intention to proceed" value={customer.deal?.intentionToProceed} />
             <Field label="Loan asked" value={customer.loan?.asked ? 'Yes' : 'No'} />
             <Field label="Existing loan" value={customer.loan?.hasExistingLoan ? 'Yes' : 'No'} />
+            <Field label="Consumer informed" value={customer.loan?.consumerInformed ? 'Yes' : 'No'} />
             <Field label="Lender" value={customer.loan?.lenderName} />
             <Field
               label="Loan asked for"
@@ -489,6 +520,17 @@ export function CustomerDetailView({
               value={customer.loan?.outstandingAmount != null ? formatINR(customer.loan.outstandingAmount) : '—'}
             />
             <Field label="Credit score" value={customer.creditCheck?.score} />
+            <Field label="Credit bank" value={customer.creditCheck?.bank} />
+            <Field
+              label="Credit method"
+              value={
+                customer.creditCheck?.method
+                  ? CREDIT_METHOD_LABEL[customer.creditCheck.method] ?? customer.creditCheck.method
+                  : undefined
+              }
+            />
+            <Field label="Default / write-off" value={customer.creditCheck?.defaultOrWriteOff ? 'Yes' : 'No'} />
+            <Field label="New to credit" value={customer.creditCheck?.newToCredit ? 'Yes' : 'No'} />
             <Field label="Loan remark" value={customer.loan?.remark} />
             <Field label="Credit note" value={customer.creditCheck?.note} />
             <Field
