@@ -39,6 +39,10 @@ interface CustomerDetailViewProps {
   onEdit?: () => void;
   /** Set when this role may turn a verified customer into an application. */
   fileApplicationHref?: string;
+  /** Set when this role may clear the intake (admin / manager). */
+  canVerify?: boolean;
+  onVerify?: () => void;
+  verifying?: boolean;
   onRefetch?: () => void;
   /** Saves the panel serial list on its own, without opening the edit modal. */
   onSavePanelSerials?: (serials: string[]) => Promise<void>;
@@ -168,6 +172,9 @@ export function CustomerDetailView({
   canEdit = false,
   onEdit,
   fileApplicationHref,
+  canVerify = false,
+  onVerify,
+  verifying = false,
   onRefetch,
   onSavePanelSerials,
 }: CustomerDetailViewProps) {
@@ -205,6 +212,9 @@ export function CustomerDetailView({
         canEdit={canEdit}
         onEdit={onEdit}
         fileApplicationHref={fileApplicationHref}
+        canVerify={canVerify}
+        onVerify={onVerify}
+        verifying={verifying}
       />
 
       <ApplicationJourney customer={customer} installations={installations} />

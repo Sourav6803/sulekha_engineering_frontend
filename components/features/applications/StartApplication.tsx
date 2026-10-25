@@ -100,10 +100,14 @@ export function StartApplication({ initialCustomerId }: Props) {
     };
   }, [initialCustomerId]);
 
-  const canFile = useMemo(
-    () => Boolean(selected) && selected?.status !== 'pending_verification' && selected?.status !== 'blocked',
-    [selected]
-  );
+  /* The gate is the office's verification, not the lifecycle status: a customer
+     saved by an agent stays pending until somebody clears the papers. Records
+     that predate the verification block fall back to `status: active`. */
+  const canFile = useMemo(() => {
+    if (!selected || selected.status === 'blocked') return false;
+    if (selected.verification?.status) return selected.verification.status === 'verified';
+    return selected.status === 'active';
+  }, [selected]);
 
   const handleCreate = async () => {
     if (!selected || !canFile) return;

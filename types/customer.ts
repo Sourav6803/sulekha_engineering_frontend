@@ -70,6 +70,54 @@ export interface Customer extends BaseDocument {
    * not a fixed set of fields.
    */
   panelSerialNumbers?: string[];
+  /* ---- the site visit: what the application wizard used to collect ---- */
+  /** Where the panels go; drives the mounting design. */
+  siteType?: 'rcc_rooftop' | 'tin_shed' | 'high_rise_structure' | 'ground_mount' | null;
+  siteNotes?: string;
+  deal?: {
+    proposalAmount?: number;
+    quotedAmount?: number;
+    intentionToProceed?: 'yes' | 'no' | 'undecided' | null;
+  };
+  loan?: {
+    asked?: boolean;
+    hasExistingLoan?: boolean | null;
+    lenderName?: string;
+    loanAmount?: number;
+    outstandingAmount?: number;
+    monthlyEmi?: number;
+    consumerInformed?: boolean;
+    remark?: string;
+  };
+  creditCheck?: {
+    bank?: string;
+    method?: 'consumer_self_check' | 'bank_portal' | 'agent_estimate' | 'other';
+    score?: number | null;
+    defaultOrWriteOff?: boolean;
+    newToCredit?: boolean;
+    status?: 'pass' | 'review' | 'fail' | 'not_checked';
+    note?: string;
+  };
+  electricBill?: {
+    consumerId?: string;
+    installationNo?: string;
+    verified?: boolean;
+  };
+  nameMatch?: {
+    consumerName?: string;
+    aadhaarName?: string;
+    passbookName?: string;
+    electricBillName?: string;
+    verdict?: 'match' | 'near_match' | 'mismatch' | 'incomplete' | null;
+  };
+  /** The office's clearance of the intake — the gate for filing an application. */
+  verification?: {
+    status?: 'pending' | 'verified' | 'rejected';
+    by?: string;
+    at?: string;
+    note?: string;
+  };
+
   createdBy?: string;
   /** The field agent who collected this customer; agents only see their own. */
   ownerAgent?: string;

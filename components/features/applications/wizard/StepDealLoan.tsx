@@ -36,14 +36,14 @@ export function StepDealLoan({ form, setForm, errors, disabled }: WizardStepProp
           <TextField
             id="deal-size"
             label="System size (kW)"
+            required
             value={form.deal.systemSizeKW}
-            onValueChange={() => undefined}
-            hint="Copied from the customer record — edit it there."
-            placeholder="—"
+            onValueChange={(value) => setForm((prev) => ({ ...prev, deal: { ...prev.deal, systemSizeKW: value } }))}
+            placeholder="e.g. 3"
             numeric
             allowDecimal
             error={errors['deal.systemSizeKW']}
-            disabled
+            disabled={disabled}
           />
 
           <TextField

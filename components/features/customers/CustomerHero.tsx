@@ -29,6 +29,10 @@ interface CustomerHeroProps {
    * start one (agent, or a customer whose papers are still unverified).
    */
   fileApplicationHref?: string;
+  /** The office's clearance — the gate the application depends on. */
+  canVerify?: boolean;
+  onVerify?: () => void;
+  verifying?: boolean;
 }
 
 /**
@@ -62,8 +66,19 @@ const KPI_ACCENTS = {
  * Split out of CustomerDetailView so that file stays about record-keeping —
  * documents, serials, installations — rather than about presentation.
  */
-export function CustomerHero({ customer, summary, canEdit, onEdit, fileApplicationHref }: CustomerHeroProps) {
+export function CustomerHero({
+  customer,
+  summary,
+  canEdit,
+  onEdit,
+  fileApplicationHref,
+  canVerify = false,
+  onVerify,
+  verifying = false,
+}: CustomerHeroProps) {
   const status = customerStatusStyle(customer.status);
+  const verification = customer.verification?.status ?? 'pending';
+  const isVerified = verification === 'verified';
 
   const location = [customer.village, customer.block].filter(Boolean).join(' · ');
   // District sits between town and state: it is what the discom paperwork is
@@ -196,6 +211,20 @@ export function CustomerHero({ customer, summary, canEdit, onEdit, fileApplicati
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
+            {/* The office reads the papers and clears the intake. Until this is
+                pressed, the record cannot become a scheme application. */}
+            {canVerify && onVerify && !isVerified && (
+              <button
+                type="button"
+                onClick={onVerify}
+                disabled={verifying}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--success)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-lg)] active:scale-[0.98] disabled:opacity-60"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                {verifying ? 'Verifying…' : 'Verify papers'}
+              </button>
+            )}
+
             {/* The hand-off to the scheme paperwork: this record, once verified,
                 becomes an application. */}
             {fileApplicationHref && (

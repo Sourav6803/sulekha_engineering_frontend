@@ -1,59 +1,27 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
-import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { CustomerForm } from '@/components/features/customers/CustomerForm';
-import { useCustomers } from '@/hooks/useCustomers';
+import { CustomerIntakeWizard } from '@/components/features/customers/CustomerIntakeWizard';
 import { useAuth } from '@/hooks/useAuth';
-import { handleApiError } from '@/lib/errors/handleApiError';
 import { canManageCustomers } from '@/lib/permissions';
-import type { CreateCustomerDto } from '@/lib/api/customers.api';
 
 /**
- * `/customers/new` — intake as a page, not a modal.
+ * `/customers/new` — the field visit.
  *
- * The agent fills this in sitting with the customer: Aadhaar, PAN, the bill, the
- * bank papers and the roof photo all get collected here, which is more than a
- * dialog can hold without scrolling inside a scroll. It also gives the record a
- * URL of its own, so a half-finished entry can be sent to a colleague.
- *
- * On save it lands on the customer's own page — from there the office verifies
- * the papers and files the application.
+ * This is the screen the agent fills in sitting with the consumer: the same
+ * consumer, site, deal, bill and name-match questions the application wizard used
+ * to ask, saved to a Customer. The office then verifies the papers and files the
+ * scheme application from that record, which is why nothing here asks for the
+ * portal details.
  */
 export default function NewCustomerPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const role = user?.role;
   const allowed = canManageCustomers(role);
-
-  const { createCustomer } = useCustomers();
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (payload: CreateCustomerDto) => {
-    setSaving(true);
-    try {
-      const response = await createCustomer(payload);
-      const created = response.data;
-      // Navigate first, then announce: a toast raised just before the route
-      // changes is dropped along with the page that queued it.
-      router.push(`/customers/${created._id}?created=1`);
-      toast.success('Customer created', {
-        description: `${created.name} — ${created.customerId}. Add the documents, then verify to file an application.`,
-      });
-    } catch (err) {
-      // The form shows field errors; this is the "phone already exists" class of
-      // refusal, which belongs next to the button rather than on a toast alone.
-      toast.error('Could not save customer', { description: handleApiError(err) });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (role && !allowed) {
     return (
@@ -94,8 +62,8 @@ export default function NewCustomerPage() {
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">New customer</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Collect the KYC, the electricity bill and the roof photo while you are at the house. Save it once — the
-            application later reads all of it from this record instead of asking again.
+            Everything the consumer tells you at the house. Save once — the office reads it, verifies the papers, and
+            files the scheme application without asking again.
           </p>
         </div>
         <Link href="/customers" className="neutral-button inline-flex items-center gap-1.5 px-3 py-2 text-sm">
@@ -103,8 +71,8 @@ export default function NewCustomerPage() {
         </Link>
       </div>
 
-      <div className="panel mt-4">
-        <CustomerForm mode="create" submitting={saving} onSubmit={handleSubmit} />
+      <div className="mt-4">
+        <CustomerIntakeWizard />
       </div>
     </PageContainer>
   );

@@ -299,21 +299,62 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
       setSaveError(null);
       setDuplicate(null);
 
-      /*
-       * Step 1 with no draft behind it.
-       *
-       * The draft is now created on the customer picker (/applications/new →
-       * StartApplication) and this wizard always opens with ?id=…, so this is a
-       * dead end rather than a POST: filing needs a customer id, and there is
-       * none in this form. Kept as an explicit refusal so a stale bookmark or a
-       * restored local entry cannot file an application with no one behind it.
-       */
+      // ---- Step 1 without a draft yet: POST it -----------------------------
       if (index === 0 && !applicationId) {
-        setSaveError(
-          'This application was not started from a customer. Open Customers, pick the verified customer and use "File application" there.'
-        );
-        toast.error('No customer behind this draft');
-        return false;
+        const localErrors: Record<string, string> = {};
+        if (form.consumerName.trim().length < 2) {
+          localErrors.consumerName = 'Consumer name must be at least 2 characters';
+        }
+        if (!/^(\+91[- ]?)?[0-9]{10}$/.test(form.phone.trim())) {
+          localErrors.phone = 'Please enter a valid 10-digit mobile number';
+        }
+        if (Object.keys(localErrors).length > 0) {
+          setErrors(localErrors);
+          return false;
+        }
+
+        setSaving(true);
+        try {
+          /*
+           * Filing moved to /applications/new, which names the customer this
+           * application belongs to; the wizard now only resumes one that exists.
+           * This block stays for an older deep link, so the payload is cast — the
+           * server refuses a create without `customer` anyway.
+           */
+          const response = await createApplication({
+            consumerName: form.consumerName.trim(),
+            phone: form.phone.trim(),
+            alternatePhone: trimOrNull(form.alternatePhone),
+            aadhaarNumber: trimOrNull(form.aadhaarNumber),
+            panNumber: trimOrNull(form.panNumber),
+            email: trimOrNull(form.email),
+          } as unknown as Parameters<typeof createApplication>[0]);
+          setApplication(response.data);
+          // Hydrate from the server so normalised values (Aadhaar digits,
+          // uppercased PAN, the 10-digit phone) are what the agent sees next.
+          setForm(formFromApplication(response.data));
+          setErrors({});
+          setDirty(false);
+          return true;
+        } catch (err) {
+          const details = readApiErrorDetails(err);
+          applyFieldErrors(details.issues);
+          setSaveError(details.message);
+          setDuplicate(
+            details.code === 'DUPLICATE_APPLICATION'
+              ? {
+                  applicationId:
+                    typeof details.data.applicationId === 'string' ? details.data.applicationId : undefined,
+                  applicationNo:
+                    typeof details.data.applicationNo === 'string' ? details.data.applicationNo : undefined,
+                }
+              : null
+          );
+          toast.error('Could not start the application', { description: details.message });
+          return false;
+        } finally {
+          setSaving(false);
+        }
       }
 
       if (!applicationId) return true;
@@ -772,7 +813,7 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
 
       {/* Steps */}
       <div>
-        {step === 0 && <StepConsumer form={form} setForm={updateForm} errors={errors} disabled={saving} application={application} />}
+        {step === 0 && <StepConsumer form={form} setForm={updateForm} errors={errors} disabled={saving} />}
 
         {step === 1 && (
           <StepSite
@@ -780,16 +821,13 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
             setForm={updateForm}
             errors={errors}
             disabled={saving}
-            application={application}
             checklist={checklist}
             checklistLoading={checklistLoading}
             checklistError={checklistError}
           />
         )}
 
-        {step === 2 && (
-          <StepDealLoan form={form} setForm={updateForm} errors={errors} disabled={saving} application={application} />
-        )}
+        {step === 2 && <StepDealLoan form={form} setForm={updateForm} errors={errors} disabled={saving} />}
 
         {step === 3 &&
           (applicationId ? (

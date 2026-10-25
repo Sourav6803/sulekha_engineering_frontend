@@ -15,6 +15,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { canManageCustomers, canStartApplication } from '@/lib/permissions';
+import { customersApi } from '@/lib/api/customers.api';
 import type { CustomerHistory, CustomerHistorySummary } from '@/lib/api/customers.api';
 import type { Customer } from '@/types/customer';
 import type { InstallationDocument } from '@/types/installation';
@@ -52,11 +53,15 @@ export default function CustomerDetailPage() {
 
   /*
    * Only a verified customer can become an application: the API refuses one
-   * whose papers nobody has checked, so the button is not offered until the
-   * status says otherwise — better a missing button than a refusal on submit.
+   * whose papers nobody has checked. `verification.status` is the signal;
+   * `status: active` is the fallback for records older than that field.
    */
+  const isVerified =
+    customer?.verification?.status === 'verified' ||
+    (!customer?.verification && customer?.status === 'active');
+
   const fileApplicationHref =
-    canStartApplication(role) && customer?.status === 'active'
+    canStartApplication(role) && isVerified && customer
       ? `/applications/new?customerId=${customer._id}`
       : undefined;
 
@@ -73,6 +78,24 @@ export default function CustomerDetailPage() {
       setLoading(false);
     }
   }, [id, getHistory]);
+
+  /* The office clears the intake. Admin and manager only — the API enforces the
+     same rule, so an agent never sees this button and could not use it anyway. */
+  const canVerify = role === 'admin' || role === 'manager';
+  const [verifying, setVerifying] = useState(false);
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      await customersApi.verify(id, { status: 'verified' });
+      toast.success('Papers verified — the application can be filed now');
+      await load(false);
+    } catch (err) {
+      toast.error('Could not verify the papers', { description: handleApiError(err) });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   // Initial fetch. setState happens only inside promise callbacks so the
   // effect body performs no synchronous state updates.
@@ -212,6 +235,9 @@ export default function CustomerDetailPage() {
         installations={installations}
         canEdit={canEdit}
         fileApplicationHref={fileApplicationHref}
+        canVerify={canVerify}
+        onVerify={handleVerify}
+        verifying={verifying}
         onEdit={() => {
           setModalError(null);
           setEditOpen(true);

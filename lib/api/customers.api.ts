@@ -56,6 +56,15 @@ export const customersApi = {
   update: (id: string, payload: UpdateCustomerDto) =>
     axiosClient.put<CustomerResponse>(ENDPOINTS.customers.byId(id), payload).then((response) => response.data),
 
+  /**
+   * The office clears the intake. Admin/manager only — the server refuses anyone
+   * else, which is what makes this the gate an application depends on.
+   */
+  verify: (id: string, payload: { status?: 'verified' | 'rejected' | 'pending'; note?: string }) =>
+    axiosClient
+      .post<CustomerResponse>(`${ENDPOINTS.customers.byId(id)}/verify`, payload)
+      .then((response) => response.data),
+
   remove: (id: string) =>
     axiosClient
       .delete<ApiResponse<null>>(ENDPOINTS.customers.byId(id))
