@@ -1,10 +1,24 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { SelectField, StepSection, TextAreaField, TextField } from './WizardFields';
+import { Combobox } from '@/components/shared/Combobox';
 import type { ApplicationChecklist, ApplicationSiteType } from '@/types/application';
 import type { WizardStepProps } from './wizardTypes';
 import { WEST_BENGAL_DISTRICTS } from '@/lib/data/westBengal';
+
+/**
+ * District → block → village, from the Local Government Directory dump in
+ * `public/data/wb-locations.json` (345 blocks, 40,402 villages, ~500 kB).
+ *
+ * Fetched once when the step first opens rather than bundled: the wizard's JS
+ * chunk would otherwise carry half a megabyte of village names for every visitor,
+ * including the ones who never reach this step.
+ */
+interface WbLocations {
+  districts: Record<string, Record<string, string[]>>;
+}
 
 interface StepSiteProps extends WizardStepProps {
   checklist: ApplicationChecklist | null;
@@ -25,6 +39,45 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
     label: site.label,
   }));
 
+  const [locations, setLocations] = useState<WbLocations | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/data/wb-locations.json')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: WbLocations | null) => {
+        if (active && data?.districts) setLocations(data);
+      })
+      .catch(() => {
+        /* The dropdowns fall back to free text rather than blocking the visit. */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const districtOptions = useMemo(
+    () => (locations ? Object.keys(locations.districts) : [...WEST_BENGAL_DISTRICTS]),
+    [locations]
+  );
+
+  const blocksForDistrict = useMemo(() => {
+    if (!locations) return [];
+    return Object.keys(locations.districts[form.address.district] ?? {});
+  }, [locations, form.address.district]);
+
+  const villagesForBlock = useMemo(() => {
+    if (!locations) return [];
+    return locations.districts[form.address.district]?.[form.address.block] ?? [];
+  }, [locations, form.address.district, form.address.block]);
+
+  /** A new district invalidates both the block and the village below it. */
+  const pickDistrict = (district: string) =>
+    setForm((prev) => ({ ...prev, address: { ...prev.address, district, block: '', village: '' } }));
+
+  const pickBlock = (block: string) =>
+    setForm((prev) => ({ ...prev, address: { ...prev.address, block, village: '' } }));
+
   return (
     <div className="space-y-4">
       <StepSection title="Site address" description="The six fields on the printed checklist, plus the landmark.">
@@ -43,27 +96,61 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
             />
           </div>
 
-          <TextField
-            id="site-village"
-            label="Village"
-            required
-            value={form.address.village}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, village: value } }))}
-            maxLength={100}
-            error={errors['address.village']}
-            disabled={disabled}
-          />
+          {villagesForBlock.length > 0 ? (
+            <Combobox
+              id="site-village"
+              label="Village"
+              required
+              value={form.address.village}
+              onValueChange={(value) =>
+                setForm((prev) => ({ ...prev, address: { ...prev.address, village: value } }))
+              }
+              options={villagesForBlock}
+              placeholder="Type to search the village"
+              hint={`${villagesForBlock.length} villages in this block`}
+              error={errors['address.village']}
+              disabled={disabled}
+            />
+          ) : (
+            <TextField
+              id="site-village"
+              label="Village"
+              required
+              value={form.address.village}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, village: value } }))}
+              maxLength={100}
+              hint={form.address.block ? 'No village list for this block — type it.' : 'Choose a block first.'}
+              error={errors['address.village']}
+              disabled={disabled}
+            />
+          )}
 
-          <TextField
-            id="site-block"
-            label="Block"
-            required
-            value={form.address.block}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, block: value } }))}
-            maxLength={100}
-            error={errors['address.block']}
-            disabled={disabled}
-          />
+          {blocksForDistrict.length > 0 ? (
+            <Combobox
+              id="site-block"
+              label="Block"
+              required
+              value={form.address.block}
+              onValueChange={pickBlock}
+              options={blocksForDistrict}
+              placeholder={form.address.district ? 'Type to search the block' : 'Choose a district first'}
+              hint={`${blocksForDistrict.length} blocks in this district`}
+              error={errors['address.block']}
+              disabled={disabled || !form.address.district}
+            />
+          ) : (
+            <TextField
+              id="site-block"
+              label="Block"
+              required
+              value={form.address.block}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, block: value } }))}
+              maxLength={100}
+              hint={form.address.district ? 'No block list for this district — type it.' : 'Choose a district first.'}
+              error={errors['address.block']}
+              disabled={disabled}
+            />
+          )}
 
           <TextField
             id="site-panchayat"
@@ -76,14 +163,15 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
             disabled={disabled}
           />
 
-          <SelectField
+          <Combobox
             id="site-district"
             label="District"
             required
             value={form.address.district}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, district: value } }))}
-            options={WEST_BENGAL_DISTRICTS.map((district) => ({ value: district, label: district }))}
-            placeholder="Choose a district"
+            onValueChange={pickDistrict}
+            options={districtOptions}
+            placeholder="Type to search the district"
+            hint={`${districtOptions.length} districts`}
             error={errors['address.district']}
             disabled={disabled}
           />
