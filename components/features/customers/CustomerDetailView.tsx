@@ -489,6 +489,8 @@ export function CustomerDetailView({
               value={customer.loan?.outstandingAmount != null ? formatINR(customer.loan.outstandingAmount) : '—'}
             />
             <Field label="Credit score" value={customer.creditCheck?.score} />
+            <Field label="Loan remark" value={customer.loan?.remark} />
+            <Field label="Credit note" value={customer.creditCheck?.note} />
             <Field
               label="Credit status"
               value={
