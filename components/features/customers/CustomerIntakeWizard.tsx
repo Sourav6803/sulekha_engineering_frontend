@@ -161,7 +161,7 @@ export function CustomerIntakeWizard() {
           installationNo: form.electricBill.installationNo.trim() || undefined,
         },
     nameMatch: {
-      consumerName: form.consumerName.trim(),
+      consumerName: form.names.consumer.trim() || form.consumerName.trim(),
       aadhaarName: form.names.aadhaar.trim() || undefined,
       passbookName: form.names.passbook.trim() || undefined,
       electricBillName: form.names.electricBill.trim() || undefined,
@@ -517,6 +517,13 @@ export function CustomerIntakeWizard() {
               description="Read the name off each document exactly as printed â€” the office compares them."
             >
               <div className="grid gap-4 sm:grid-cols-2">
+                <TextField
+                  id="consumerNameOnPapers"
+                  label="Name on the application"
+                  value={form.names.consumer}
+                  onValueChange={(value) => setField('names', { ...form.names, consumer: value })}
+                  hint="As typed on the first page; defaults to the consumer name."
+                />
                 <TextField
                   id="passbookName"
                   label="Name on passbook"

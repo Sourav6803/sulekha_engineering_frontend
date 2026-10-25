@@ -8,13 +8,17 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Landmark,
   MapPin,
   Phone,
   Settings2,
   ShieldCheck,
   StickyNote,
   Upload,
+  User,
+  Wallet,
   Wrench,
+  Zap,
 } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDateShort, formatINR, formatNumber } from '@/lib/format';
@@ -310,7 +314,9 @@ export function CustomerDetailView({
                     </p>
                     <p className="mt-0.5 text-xs text-[var(--muted-soft)]">
                       {doc.type.replace(/([A-Z])/g, ' $1').trim()}
-                      {doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ''}
+                      {doc.fileSize
+                        ? ` · ${doc.fileSize < 1024 ? `${doc.fileSize} B` : `${(doc.fileSize / 1024).toFixed(0)} KB`}`
+                        : ''}
                       {doc.uploadedAt ? ` · ${formatDateShort(doc.uploadedAt)}` : ''}
                     </p>
                   </div>
@@ -397,6 +403,19 @@ export function CustomerDetailView({
             title="Identity & KYC"
             tile="bg-[linear-gradient(140deg,#6D5BD0_0%,#4635A3_100%)]"
           >
+            <Field label="Aadhaar number" value={customer.aadhaarNumber} />
+            <Field
+              label="Category"
+              value={
+                customer.category ? (
+                  <span className="badge-pill bg-[var(--primary-tint)] text-[var(--primary-active)]">
+                    {customer.category.toUpperCase()}
+                  </span>
+                ) : (
+                  '—'
+                )
+              }
+            />
             <Field label="PAN number" value={customer.panNumber} />
             <Field label="GST number" value={customer.gstNumber} />
             <Field label="Referred by" value={customer.referredBy} />
@@ -428,6 +447,65 @@ export function CustomerDetailView({
                   : 'Anytime'
               }
             />
+          </FieldGroup>
+
+          {/* The site visit: what the office reads before it files. */}
+          <FieldGroup
+            icon={Wallet}
+            title="Deal & loan"
+            tile="bg-[linear-gradient(140deg,#E8B03A_0%,#C98A08_100%)]"
+          >
+            <Field
+              label="Proposal amount"
+              value={customer.deal?.proposalAmount != null ? formatINR(customer.deal.proposalAmount) : '—'}
+            />
+            <Field
+              label="Quoted amount"
+              value={customer.deal?.quotedAmount != null ? formatINR(customer.deal.quotedAmount) : '—'}
+            />
+            <Field label="Intention to proceed" value={customer.deal?.intentionToProceed} />
+            <Field label="Loan asked" value={customer.loan?.asked ? 'Yes' : 'No'} />
+            <Field label="Existing loan" value={customer.loan?.hasExistingLoan ? 'Yes' : 'No'} />
+            <Field label="Lender" value={customer.loan?.lenderName} />
+            <Field
+              label="Outstanding"
+              value={customer.loan?.outstandingAmount != null ? formatINR(customer.loan.outstandingAmount) : '—'}
+            />
+            <Field label="Credit score" value={customer.creditCheck?.score} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={Landmark}
+            title="Bank account"
+            tile="bg-[linear-gradient(140deg,#34C46B_0%,#0B7A3D_100%)]"
+          >
+            <Field label="Account holder" value={customer.bank?.accountHolderName} />
+            <Field label="Account number" value={customer.bank?.accountNumber} />
+            <Field label="IFSC" value={customer.bank?.ifsc} />
+            <Field label="Bank" value={customer.bank?.bankName} />
+            <Field label="Branch" value={customer.bank?.branch} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={Zap}
+            title="Electricity bill"
+            tile="bg-[linear-gradient(140deg,#6D5BD0_0%,#4635A3_100%)]"
+          >
+            <Field label="Consumer id" value={customer.electricBill?.consumerId} />
+            <Field label="Installation no" value={customer.electricBill?.installationNo} />
+            <Field label="Bill verified" value={customer.electricBill?.verified ? 'Yes' : 'No'} />
+          </FieldGroup>
+
+          <FieldGroup
+            icon={User}
+            title="Names on the papers"
+            tile="bg-[linear-gradient(140deg,#4A90D9_0%,#1F5FA8_100%)]"
+          >
+            <Field label="Application" value={customer.nameMatch?.consumerName ?? customer.name} />
+            <Field label="Aadhaar" value={customer.nameMatch?.aadhaarName} />
+            <Field label="Passbook" value={customer.nameMatch?.passbookName} />
+            <Field label="Electricity bill" value={customer.nameMatch?.electricBillName} />
+            <Field label="Verdict" value={customer.nameMatch?.verdict} />
           </FieldGroup>
 
           <div className="lg:col-span-2">

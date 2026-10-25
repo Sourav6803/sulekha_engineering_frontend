@@ -39,6 +39,9 @@ export const DOCUMENT_CATALOGUE: readonly CatalogueItem[] = [
   { type: 'eToken', label: 'eToken', required: false },
   { type: 'acknowledgement', label: 'Acknowledgement', required: false },
   { type: 'netMetering', label: 'Net Metering', required: false },
+  /* Only an SC/ST household needs this; the documents card gates it by category
+     when it decides what counts as missing. */
+  { type: 'casteCertificate', label: 'Caste Cert', required: false },
 ];
 
 /** The subset that has to be on file before an application is complete. */
