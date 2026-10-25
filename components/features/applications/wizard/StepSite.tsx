@@ -16,8 +16,13 @@ import { WEST_BENGAL_DISTRICTS } from '@/lib/data/westBengal';
  * chunk would otherwise carry half a megabyte of village names for every visitor,
  * including the ones who never reach this step.
  */
+interface WbBlock {
+  villages: string[];
+  panchayats: string[];
+}
+
 interface WbLocations {
-  districts: Record<string, Record<string, string[]>>;
+  districts: Record<string, Record<string, WbBlock>>;
 }
 
 interface StepSiteProps extends WizardStepProps {
@@ -68,15 +73,22 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
 
   const villagesForBlock = useMemo(() => {
     if (!locations) return [];
-    return locations.districts[form.address.district]?.[form.address.block] ?? [];
+    return locations.districts[form.address.district]?.[form.address.block]?.villages ?? [];
   }, [locations, form.address.district, form.address.block]);
 
-  /** A new district invalidates both the block and the village below it. */
+  /* Panchayats come from the GP mapping: every village in the block resolves to
+     its gram panchayat, so the list is exactly the blocks' own GPs. */
+  const panchayatsForBlock = useMemo(() => {
+    if (!locations) return [];
+    return locations.districts[form.address.district]?.[form.address.block]?.panchayats ?? [];
+  }, [locations, form.address.district, form.address.block]);
+
+  /** A new district invalidates everything below it. */
   const pickDistrict = (district: string) =>
-    setForm((prev) => ({ ...prev, address: { ...prev.address, district, block: '', village: '' } }));
+    setForm((prev) => ({ ...prev, address: { ...prev.address, district, block: '', panchayat: '', village: '' } }));
 
   const pickBlock = (block: string) =>
-    setForm((prev) => ({ ...prev, address: { ...prev.address, block, village: '' } }));
+    setForm((prev) => ({ ...prev, address: { ...prev.address, block, panchayat: '', village: '' } }));
 
   return (
     <div className="space-y-4">
@@ -95,6 +107,75 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
               disabled={disabled}
             />
           </div>
+
+          <Combobox
+            id="site-district"
+            label="District"
+            required
+            value={form.address.district}
+            onValueChange={pickDistrict}
+            options={districtOptions}
+            placeholder="Type to search the district"
+            hint={`${districtOptions.length} districts`}
+            error={errors['address.district']}
+            disabled={disabled}
+          />
+
+          {blocksForDistrict.length > 0 ? (
+            <Combobox
+              id="site-block"
+              label="Block"
+              required
+              value={form.address.block}
+              onValueChange={pickBlock}
+              options={blocksForDistrict}
+              placeholder={form.address.district ? 'Type to search the block' : 'Choose a district first'}
+              hint={`${blocksForDistrict.length} blocks in this district`}
+              error={errors['address.block']}
+              disabled={disabled || !form.address.district}
+            />
+          ) : (
+            <TextField
+              id="site-block"
+              label="Block"
+              required
+              value={form.address.block}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, block: value } }))}
+              maxLength={100}
+              hint={form.address.district ? 'No block list for this district — type it.' : 'Choose a district first.'}
+              error={errors['address.block']}
+              disabled={disabled}
+            />
+          )}
+
+          {panchayatsForBlock.length > 0 ? (
+            <Combobox
+              id="site-panchayat"
+              label="Panchayat"
+              required
+              value={form.address.panchayat}
+              onValueChange={(value) =>
+                setForm((prev) => ({ ...prev, address: { ...prev.address, panchayat: value } }))
+              }
+              options={panchayatsForBlock}
+              placeholder={form.address.block ? 'Type to search the gram panchayat' : 'Choose a block first'}
+              hint={`${panchayatsForBlock.length} gram panchayats in this block`}
+              error={errors['address.panchayat']}
+              disabled={disabled || !form.address.block}
+            />
+          ) : (
+            <TextField
+              id="site-panchayat"
+              label="Panchayat"
+              required
+              value={form.address.panchayat}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, panchayat: value } }))}
+              maxLength={100}
+              hint={form.address.block ? 'No panchayat list for this block — type it.' : 'Choose a block first.'}
+              error={errors['address.panchayat']}
+              disabled={disabled}
+            />
+          )}
 
           {villagesForBlock.length > 0 ? (
             <Combobox
@@ -124,57 +205,6 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
               disabled={disabled}
             />
           )}
-
-          {blocksForDistrict.length > 0 ? (
-            <Combobox
-              id="site-block"
-              label="Block"
-              required
-              value={form.address.block}
-              onValueChange={pickBlock}
-              options={blocksForDistrict}
-              placeholder={form.address.district ? 'Type to search the block' : 'Choose a district first'}
-              hint={`${blocksForDistrict.length} blocks in this district`}
-              error={errors['address.block']}
-              disabled={disabled || !form.address.district}
-            />
-          ) : (
-            <TextField
-              id="site-block"
-              label="Block"
-              required
-              value={form.address.block}
-              onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, block: value } }))}
-              maxLength={100}
-              hint={form.address.district ? 'No block list for this district — type it.' : 'Choose a district first.'}
-              error={errors['address.block']}
-              disabled={disabled}
-            />
-          )}
-
-          <TextField
-            id="site-panchayat"
-            label="Panchayat"
-            required
-            value={form.address.panchayat}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, panchayat: value } }))}
-            maxLength={100}
-            error={errors['address.panchayat']}
-            disabled={disabled}
-          />
-
-          <Combobox
-            id="site-district"
-            label="District"
-            required
-            value={form.address.district}
-            onValueChange={pickDistrict}
-            options={districtOptions}
-            placeholder="Type to search the district"
-            hint={`${districtOptions.length} districts`}
-            error={errors['address.district']}
-            disabled={disabled}
-          />
 
           <TextField
             id="site-landmark"

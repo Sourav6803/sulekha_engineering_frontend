@@ -270,6 +270,7 @@ export function CustomerIntakeWizard() {
       if (!city.trim()) found.city = 'City is required.';
       if (!form.address.district) found['address.district'] = 'Choose the district.';
       if (!form.address.block.trim()) found['address.block'] = 'Block is required.';
+      if (!form.address.panchayat.trim()) found['address.panchayat'] = 'Panchayat is required.';
       if (!form.address.village.trim()) found['address.village'] = 'Village is required.';
       if (!/^[0-9]{6}$/.test(form.address.pincode.trim())) found['address.pincode'] = 'Enter the 6-digit pincode.';
     }
