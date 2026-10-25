@@ -4,6 +4,7 @@ import { MapPin } from 'lucide-react';
 import { SelectField, StepSection, TextAreaField, TextField } from './WizardFields';
 import type { ApplicationChecklist, ApplicationSiteType } from '@/types/application';
 import type { WizardStepProps } from './wizardTypes';
+import { WEST_BENGAL_DISTRICTS } from '@/lib/data/westBengal';
 
 interface StepSiteProps extends WizardStepProps {
   checklist: ApplicationChecklist | null;
@@ -75,13 +76,14 @@ export function StepSite({ form, setForm, errors, disabled, checklist, checklist
             disabled={disabled}
           />
 
-          <TextField
+          <SelectField
             id="site-district"
             label="District"
             required
             value={form.address.district}
             onValueChange={(value) => setForm((prev) => ({ ...prev, address: { ...prev.address, district: value } }))}
-            maxLength={100}
+            options={WEST_BENGAL_DISTRICTS.map((district) => ({ value: district, label: district }))}
+            placeholder="Choose a district"
             error={errors['address.district']}
             disabled={disabled}
           />

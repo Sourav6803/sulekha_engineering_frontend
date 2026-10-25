@@ -58,6 +58,8 @@ export interface WizardForm {
   aadhaarNumber: string;
   panNumber: string;
   email: string;
+  /** Caste category — decides the subsidy rate and the caste certificate. */
+  category: string;
 
   // ---- Step 2: site & address ----
   address: {
@@ -136,6 +138,7 @@ export function emptyWizardForm(): WizardForm {
     aadhaarNumber: '',
     panNumber: '',
     email: '',
+    category: '',
 
     address: { street: '', village: '', block: '', panchayat: '', district: '', landmark: '', pincode: '' },
     siteType: '',

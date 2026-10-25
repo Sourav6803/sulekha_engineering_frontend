@@ -73,6 +73,8 @@ export interface TextFieldProps
   numeric?: boolean;
   /** With `numeric`, also allow one decimal point — kW and rupee amounts. */
   allowDecimal?: boolean;
+  /** A fixed affix shown inside the field, e.g. the +91 on an Indian mobile. */
+  prefix?: string;
 }
 
 export function TextField({
@@ -86,6 +88,7 @@ export function TextField({
   compact = false,
   numeric = false,
   allowDecimal = false,
+  prefix,
   ...inputProps
 }: TextFieldProps) {
   const sanitize = (raw: string) => {
@@ -106,15 +109,32 @@ export function TextField({
 
   return (
     <FieldShell id={id} label={label} required={inputProps.required} hint={hint} hintBn={hintBn} error={error}>
-      <input
-        {...inputProps}
-        id={id}
-        value={value}
-        inputMode={numeric ? (allowDecimal ? 'decimal' : 'numeric') : inputProps.inputMode}
-        onChange={(event) => onValueChange(sanitize(event.target.value))}
-        aria-invalid={Boolean(error)}
-        className={`form-input ${compact ? 'py-2.5 text-sm' : ''} ${error ? errorInputClass : ''}`}
-      />
+      {prefix ? (
+        <div className="flex items-stretch">
+          <span className="flex items-center gap-1 rounded-l-[0.9rem] border border-r-0 border-[var(--border-strong)] bg-[var(--surface-muted)] px-3 text-sm font-medium text-[var(--muted)]">
+            {prefix}
+          </span>
+          <input
+            {...inputProps}
+            id={id}
+            value={value}
+            inputMode={numeric ? (allowDecimal ? 'decimal' : 'numeric') : inputProps.inputMode}
+            onChange={(event) => onValueChange(sanitize(event.target.value))}
+            aria-invalid={Boolean(error)}
+            className={`form-input rounded-l-none ${compact ? 'py-2.5 text-sm' : ''} ${error ? errorInputClass : ''}`}
+          />
+        </div>
+      ) : (
+        <input
+          {...inputProps}
+          id={id}
+          value={value}
+          inputMode={numeric ? (allowDecimal ? 'decimal' : 'numeric') : inputProps.inputMode}
+          onChange={(event) => onValueChange(sanitize(event.target.value))}
+          aria-invalid={Boolean(error)}
+          className={`form-input ${compact ? 'py-2.5 text-sm' : ''} ${error ? errorInputClass : ''}`}
+        />
+      )}
     </FieldShell>
   );
 }

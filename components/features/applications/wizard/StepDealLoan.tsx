@@ -38,10 +38,17 @@ export function StepDealLoan({ form, setForm, errors, disabled }: WizardStepProp
             label="System size (kW)"
             required
             value={form.deal.systemSizeKW}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, deal: { ...prev.deal, systemSizeKW: value } }))}
+            onValueChange={(value) => {
+              /* PM Surya Ghar prices nothing above 10 kW, so the field caps the
+                 number here instead of letting the save fail on the server. */
+              const capped = Number(value) > 10 ? '10' : value;
+              setForm((prev) => ({ ...prev, deal: { ...prev.deal, systemSizeKW: capped } }));
+            }}
             placeholder="e.g. 3"
             numeric
             allowDecimal
+            max={10}
+            hint="Maximum 10 kW — the subsidy table stops there."
             error={errors['deal.systemSizeKW']}
             disabled={disabled}
           />

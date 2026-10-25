@@ -1,7 +1,15 @@
 'use client';
 
 import { UserRound } from 'lucide-react';
-import { StepSection, TextField } from './WizardFields';
+import { SelectField, StepSection, TextField } from './WizardFields';
+
+/** Caste categories PM Surya Ghar prices the subsidy on. */
+const CATEGORY_OPTIONS = [
+  { value: 'general', label: 'General' },
+  { value: 'obc', label: 'OBC' },
+  { value: 'sc', label: 'SC' },
+  { value: 'st', label: 'ST' },
+];
 import type { WizardStepProps } from './wizardTypes';
 
 /**
@@ -41,6 +49,9 @@ export function StepConsumer({ form, setForm, errors, disabled }: WizardStepProp
             placeholder="10-digit mobile"
             inputMode="tel"
             autoComplete="tel"
+            prefix="+91"
+            numeric
+            maxLength={10}
             error={errors.phone}
             disabled={disabled}
           />
@@ -52,6 +63,9 @@ export function StepConsumer({ form, setForm, errors, disabled }: WizardStepProp
             onValueChange={(value) => setForm((prev) => ({ ...prev, alternatePhone: value }))}
             placeholder="Optional — family contact"
             inputMode="tel"
+            prefix="+91"
+            numeric
+            maxLength={10}
             error={errors.alternatePhone}
             disabled={disabled}
           />
@@ -65,6 +79,18 @@ export function StepConsumer({ form, setForm, errors, disabled }: WizardStepProp
             placeholder="Optional"
             autoComplete="email"
             error={errors.email}
+            disabled={disabled}
+          />
+
+          <SelectField
+            id="consumer-category"
+            label="Category"
+            value={form.category}
+            onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}
+            options={CATEGORY_OPTIONS}
+            placeholder="Choose a category"
+            hint="SC/ST needs the caste certificate in the documents step."
+            error={errors.category}
             disabled={disabled}
           />
 

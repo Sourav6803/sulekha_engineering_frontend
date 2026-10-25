@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Save, Trash2, Upload } from 'lucide-react';
@@ -62,6 +62,7 @@ const DOCUMENT_SLOTS = [
   { type: 'electricBill', label: 'Electricity bill', hint: 'The bill for this connection' },
   { type: 'sitePhotoBefore', label: 'Rooftop photo', hint: 'The roof where the panels go' },
   { type: 'landRecord', label: 'Land record', hint: 'Mutation, rent receipt - if asked for' },
+  { type: 'casteCertificate', label: 'Caste certificate', hint: 'Needed for an SC/ST household' },
 ] as const;
 
 const toNumber = (value: string): number | undefined => {
@@ -93,7 +94,10 @@ export function CustomerIntakeWizard() {
   const [bankName, setBankName] = useState('');
   const [bankBranch, setBankBranch] = useState('');
 
-  const errors = useMemo<Record<string, string>>(() => ({}), []);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /** SC/ST households claim the higher subsidy, so the certificate is required. */
+  const isScSt = form.category === 'sc' || form.category === 'st';
 
   const setField = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -114,8 +118,9 @@ export function CustomerIntakeWizard() {
         alternatePhone: form.alternatePhone.trim() || undefined,
         aadhaarNumber: form.aadhaarNumber.trim() || undefined,
         panNumber: form.panNumber.trim() || undefined,
-        email: form.email.trim() || undefined,
-        address: form.address.street.trim(),
+    email: form.email.trim() || undefined,
+    category: (form.category || undefined) as Customer['category'],
+    address: form.address.street.trim(),
         street: form.address.street.trim(),
         village: form.address.village.trim() || undefined,
         block: form.address.block.trim() || undefined,
@@ -238,7 +243,62 @@ export function CustomerIntakeWizard() {
     }
   };
 
+  /**
+   * What the current step refuses to move on without.
+   *
+   * Runs before the step changes, so an agent cannot walk to "Save" leaving the
+   * name, the address or the system size empty and only then meet a server 400.
+   * The keys match the ones the step components read out of `errors`.
+   */
+  const validateStep = (index: number): Record<string, string> => {
+    const found: Record<string, string> = {};
+
+    if (index === 0) {
+      if (!form.consumerName.trim()) found.consumerName = 'Consumer name is required.';
+      if (!/^[0-9]{10}$/.test(form.phone.trim())) found.phone = 'Enter a 10-digit mobile number.';
+      if (form.aadhaarNumber.trim() && !/^[0-9]{12}$/.test(form.aadhaarNumber.replace(/\D/g, ''))) {
+        found.aadhaarNumber = 'Aadhaar must be 12 digits.';
+      }
+      if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) {
+        found.email = 'Enter a valid email.';
+      }
+      if (!form.category) found.category = 'Choose the caste category.';
+    }
+
+    if (index === 1) {
+      if (!form.address.street.trim()) found['address.street'] = 'Street / house is required.';
+      if (!city.trim()) found.city = 'City is required.';
+      if (!form.address.district) found['address.district'] = 'Choose the district.';
+      if (!form.address.block.trim()) found['address.block'] = 'Block is required.';
+      if (!form.address.village.trim()) found['address.village'] = 'Village is required.';
+      if (!/^[0-9]{6}$/.test(form.address.pincode.trim())) found['address.pincode'] = 'Enter the 6-digit pincode.';
+    }
+
+    if (index === 2) {
+      const size = Number(form.deal.systemSizeKW);
+      if (!form.deal.systemSizeKW.trim() || !Number.isFinite(size) || size <= 0) {
+        found['deal.systemSizeKW'] = 'System size is required.';
+      } else if (size > 10) {
+        found['deal.systemSizeKW'] = 'Maximum 10 kW.';
+      }
+    }
+
+    if (index === DOCUMENTS_STEP && isScSt && !documents.some((entry) => entry.type === 'casteCertificate')) {
+      found.__documents = 'Upload the caste certificate for an SC/ST household.';
+    }
+
+    return found;
+  };
+
   const handleNext = async () => {
+    const problems = validateStep(step);
+    if (Object.keys(problems).length > 0) {
+      setErrors(problems);
+      toast.error(Object.values(problems)[0]);
+      return;
+    }
+    setErrors({});
+
     const next = Math.min(LAST_STEP, step + 1);
     if (next === DOCUMENTS_STEP && !customerId) {
       setSavingStep(true);
@@ -256,6 +316,15 @@ export function CustomerIntakeWizard() {
   };
 
   const handleSave = async () => {
+    /* Re-check every step here: an agent can jump back, blank a field and jump
+       straight to the last page, so the last page cannot trust the earlier gates. */
+    const problems = { ...validateStep(0), ...validateStep(1), ...validateStep(2), ...validateStep(DOCUMENTS_STEP) };
+    if (Object.keys(problems).length > 0) {
+      setErrors(problems);
+      toast.error(Object.values(problems)[0]);
+      return;
+    }
+
     setSaving(true);
     try {
       const id = await ensureCustomer();
@@ -302,8 +371,15 @@ export function CustomerIntakeWizard() {
                 description="Kept on the customer record; the discom paperwork needs them."
               >
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <TextField id="city" label="City" value={city} onValueChange={setCity} required />
-                  <TextField id="state" label="State" value={state} onValueChange={setState} required />
+                  <TextField id="city" label="City" value={city} onValueChange={setCity} required error={errors.city} />
+                  <TextField
+                    id="state"
+                    label="State"
+                    value={state}
+                    onValueChange={setState}
+                    readOnly
+                    hint="Fixed — this vendor files only in West Bengal."
+                  />
                   <SelectField
                     id="roofType"
                     label="Roof type"
@@ -325,8 +401,13 @@ export function CustomerIntakeWizard() {
                 title="Documents"
                 description="Photograph each paper at the house. The office reads them here before verifying."
               >
+                {errors.__documents && (
+                  <p className="mb-2 rounded-[0.9rem] border border-[var(--warning)] bg-[var(--warning-tint)] px-3 py-2 text-xs text-[var(--warning)]">
+                    {errors.__documents}
+                  </p>
+                )}
                 <ul className="space-y-2">
-                  {DOCUMENT_SLOTS.map((slot) => {
+                  {DOCUMENT_SLOTS.filter((slot) => slot.type !== 'casteCertificate' || isScSt).map((slot) => {
                     const stored = documentFor(slot.type);
                     return (
                       <li

@@ -27,7 +27,9 @@ export interface CustomerDocument {
     /** The acknowledgement receipt for the filed application. */
     | 'acknowledgement'
     /** The net-metering agreement / application copy. */
-    | 'netMetering';
+    | 'netMetering'
+    /** Required when the household is SC/ST and claims the higher subsidy. */
+    | 'casteCertificate';
   url: string;
   fileName: string;
   fileSize?: number;
@@ -53,6 +55,8 @@ export interface Customer extends BaseDocument {
   pincode: string;
   systemSizeKW: number;
   roofType: RoofType;
+  /** Caste category — decides the subsidy rate and the caste certificate. */
+  category?: 'general' | 'obc' | 'sc' | 'st' | null;
   roofArea?: number;
   gstNumber?: string;
   /** KYC identifier, 12 digits. Snapshotted onto the application. */
