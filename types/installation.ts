@@ -101,6 +101,35 @@ export interface InstallationDocument extends BaseDocument {
     caption?: string;
     uploadedAt?: string;
   }>;
+  /** What the crew records on site. See the evidence card. */
+  panelUnits?: InstallationPanelUnit[];
+  sitePhotos?: {
+    panels?: InstallationPhoto;
+    meter?: InstallationPhoto;
+  };
+  inverter?: {
+    brand?: string;
+    serial?: string;
+    photoUrl?: string;
+    photoFileName?: string;
+  };
+  marketingPhoto?: InstallationPhoto;
+
   createdBy: string;
   updatedBy?: string;
+}
+
+/** One panel, with the serial off its sticker and a photo of that panel. */
+export interface InstallationPanelUnit {
+  _id: string;
+  serial?: string;
+  photoUrl?: string;
+  photoFileName?: string;
+  addedAt?: string;
+}
+
+export interface InstallationPhoto {
+  url?: string;
+  fileName?: string;
+  uploadedAt?: string;
 }

@@ -35,6 +35,9 @@ export type ApplicationDocumentKind =
   | 'rooftopPhoto'
   | 'landRecord'
   | 'passbookOrCheque'
+  /** The unsigned documents, generated from the application by the office. */
+  | 'issuedQuotation'
+  | 'issuedAgreement'
   | 'signedQuotation'
   | 'signedAgreement'
   | 'other';
@@ -149,6 +152,13 @@ export interface ApplicationDocument extends BaseDocument {
   nameMatch?: ApplicationNameMatch | null;
   /** The credit pre-check the agent recorded — a notice only, never a gate. */
   creditCheck?: ApplicationCreditCheck;
+  /**
+   * The linked quotation / agreement, populated on GET /applications/:id. Present
+   * once the office has issued the document; the PDF itself travels as an
+   * `issuedQuotation` / `issuedAgreement` document.
+   */
+  quotation?: { _id: string; quotationNo?: string; status?: string; totalAmount?: number } | string | null;
+  agreement?: { _id: string; agreementNo?: string; status?: string } | string | null;
 }
 
 /** One uploaded document (the array item stored on the application). */
@@ -166,6 +176,12 @@ export interface ApplicationDocumentFile {
   qualityCheck?: ApplicationQualityCheck;
   /** The office's human verdict — separate from the clarity check. */
   review?: ApplicationDocumentReview;
+  /**
+   * Signed copies only: the date the consumer signed, as the filer stated it,
+   * and anything they wanted the office to know about the paper.
+   */
+  signedOn?: string | null;
+  note?: string;
   uploadedAt?: string;
 }
 
@@ -239,6 +255,12 @@ export interface ApplicationDocumentsSummary {
   unclear: number;
   total: number;
   complete: boolean;
+  /**
+   * The signed paper's own state per kind. The signed quotation and agreement
+   * are optional on the checklist, so `missing` never speaks for them — and a
+   * copy awaiting a verdict must not read as done.
+   */
+  signed?: Record<'signedQuotation' | 'signedAgreement', 'missing' | 'pending' | 'accepted' | 'rejected'>;
 }
 
 export interface ApplicationNameMatch {

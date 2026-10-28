@@ -253,17 +253,62 @@ export const applicationsApi = {
    * Content-Type is deliberately left unset for the same reason as
    * `uploadDocument`: the browser must write it itself so the multipart boundary
    * is included. The server stores it as its own document, so the generated PDF
-   * is never overwritten. Office only — an agent gets a 403.
+   * is never overwritten.
+   *
+   * Both roles may file it: the field agent is the one in the consumer's house
+   * and the office can be 100 km away. The difference is the verdict — an agent's
+   * upload is stored `pending` until an admin accepts it, while an office upload
+   * is accepted on arrival. `signedOn` and `note` are the filer's own account of
+   * the paper (when the consumer signed, anything the office should know).
    */
-  async uploadSignedDocument(id: string, file: File, kind?: ApplicationDocumentKind) {
+  async uploadSignedDocument(
+    id: string,
+    file: File,
+    kind?: ApplicationDocumentKind,
+    meta: { signedOn?: string; note?: string } = {}
+  ) {
     const body = new FormData();
     body.append('file', file);
     if (kind) body.append('kind', kind);
+    if (meta.signedOn) body.append('signedOn', meta.signedOn);
+    if (meta.note) body.append('note', meta.note);
 
     const { data } = await axiosClient.post<ApiResponse<ApplicationDocumentFile>>(
       ENDPOINTS.applications.signedDocument(id),
       body,
       { headers: { 'Content-Type': undefined } }
+    );
+    return data;
+  },
+
+  /**
+   * POST /applications/:id/issue-quotation — render the quotation, file the PDF on
+   * the application and tell the agent.
+   *
+   * `quotationId` is how the editor hands back a quotation the office has already
+   * written (and edited — BOQ lines, quantities, wattage). Without it the server
+   * builds one from the application's own fields, which is the no-editor shortcut.
+   */
+  async issueQuotation(
+    id: string,
+    payload: { amount?: number; quotationId?: string } = {}
+  ) {
+    const { data } = await axiosClient.post<ApiResponse<unknown>>(
+      ENDPOINTS.applications.issueQuotation(id),
+      payload
+    );
+    return data;
+  },
+
+  /**
+   * POST /applications/:id/issue-agreement — render the agreement, file the PDF on
+   * the application and tell the agent. `agreementId` hands back one written (or
+   * edited) in the agreements screen; without it the server builds one.
+   */
+  async issueAgreement(id: string, payload: { amount?: number; agreementId?: string } = {}) {
+    const { data } = await axiosClient.post<ApiResponse<unknown>>(
+      ENDPOINTS.applications.issueAgreement(id),
+      payload
     );
     return data;
   },

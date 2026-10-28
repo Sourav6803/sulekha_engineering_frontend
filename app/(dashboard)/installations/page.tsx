@@ -9,7 +9,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { InstallationTable } from '@/components/features/installations/InstallationTable';
 import { useInstallations } from '@/hooks/useInstallations';
 import { useAuth } from '@/hooks/useAuth';
-import { canManageInstallations } from '@/lib/permissions';
+import { canCreateInstallation } from '@/lib/permissions';
 import { ROOF_TYPE_LABEL } from '@/components/features/installations/installationStatus';
 import type { InstallationListQuery } from '@/lib/api/installations.api';
 import type { InstallationStatus } from '@/types/installation';
@@ -36,7 +36,9 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
 export default function InstallationsPage() {
   const { user } = useAuth();
   const role = user?.role;
-  const canCreate = canManageInstallations(role);
+  // Filing an installation is the office's job. The crew works the jobs they are
+  // assigned, so they never get the button that creates one.
+  const canCreate = canCreateInstallation(role, user?.department);
 
   const { installations, pagination, loading, fetchInstallations } = useInstallations();
 

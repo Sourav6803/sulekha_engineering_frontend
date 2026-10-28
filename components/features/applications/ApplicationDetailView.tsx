@@ -9,7 +9,13 @@ import {
   type ApplicationViewMode,
   type ReviewDocumentHandler,
 } from './ApplicationDocumentsSection';
-import { OfficeDecisionPanel, QuotationAgreementSection, signedCopyDocuments } from './ApplicationOfficeSections';
+import { ApplicationOfficeDocumentsSection } from './ApplicationOfficeDocumentsSection';
+import {
+  IssueDocumentsPanel,
+  OfficeDecisionPanel,
+  QuotationAgreementSection,
+  paperworkDocuments,
+} from './ApplicationOfficeSections';
 import {
   ConsumerSection,
   DealSection,
@@ -57,8 +63,21 @@ interface ApplicationDetailViewProps {
   onVerifyBill: (payload: ApplicationElectricBillVerifyPayload) => Promise<string | null>;
   onReview: (payload: ApplicationReviewPayload) => Promise<string | null>;
   onUpdateStatus: (payload: ApplicationStatusUpdatePayload) => Promise<string | null>;
-  /** Office only — the kind says which signed document is being filed. */
-  onUploadSignedDocument: (file: File, kind: ApplicationDocumentKind) => Promise<string | null>;
+  /**
+   * Both roles may file the consumer-signed copy; the kind says which one. An
+   * agent's upload waits for the office's verdict, an office upload is accepted
+   * on arrival — the server decides that, not this screen.
+   */
+  onUploadSignedDocument: (
+    file: File,
+    kind: ApplicationDocumentKind,
+    meta: { signedOn?: string; note?: string }
+  ) => Promise<string | null>;
+  /** Office: generate + file the unsigned quotation / agreement on this application. */
+  onIssueQuotation: (amount?: number) => Promise<string | null>;
+  onIssueAgreement: (amount?: number) => Promise<string | null>;
+  /** Office: remove a document from the file (used by the scheme-document card). */
+  onDeleteDocument: (documentId: string) => Promise<string | null>;
 }
 
 /**
@@ -89,6 +108,9 @@ export function ApplicationDetailView({
   onReview,
   onUpdateStatus,
   onUploadSignedDocument,
+  onIssueQuotation,
+  onIssueAgreement,
+  onDeleteDocument,
 }: ApplicationDetailViewProps) {
   const statusLabel = statusMeta[application.status]?.label;
   const canEditDetails = isAgentEditableStatus(application.status);
@@ -204,6 +226,19 @@ export function ApplicationDetailView({
         application={application}
         mode={mode}
         onVerifyBill={office ? onVerifyBill : undefined}
+        // Same endpoint the documents grid uses; the bill is a checklist
+        // document, and filing it is what fills `bill.fileUrl`.
+        onAttachBill={
+          documentEditable
+            ? (file) =>
+                onUpload('electricBill', file, {
+                  accountNumber: '',
+                  ifsc: '',
+                  branchName: '',
+                  accountType: '',
+                })
+            : undefined
+        }
       />
       <NameMatchSection application={application} />
 
@@ -219,13 +254,33 @@ export function ApplicationDetailView({
         onReviewDocument={office ? onReviewDocument : undefined}
       />
 
-      {/* Both roles see the signed quotation / agreement. The office files them;
-          the field agent only views and downloads them (no upload path at all). */}
+      {/* The office issues the paper here; the agent prints it and files the scan.
+          Both live in the same card so the two halves of the flow are one glance. */}
+      {office && (
+        <ApplicationOfficeDocumentsSection
+          checklist={checklist}
+          files={application.documents ?? []}
+          onUpload={(file, kind) =>
+            onUpload(kind, file, { accountNumber: '', ifsc: '', branchName: '', accountType: '' })
+          }
+          onRemove={onDeleteDocument}
+        />
+      )}
+
+      {office && (
+        <IssueDocumentsPanel
+          application={application}
+          onIssueQuotation={onIssueQuotation}
+          onIssueAgreement={onIssueAgreement}
+        />
+      )}
+
       <QuotationAgreementSection
         checklist={checklist}
-        files={signedCopyDocuments(application)}
+        files={paperworkDocuments(application)}
         mode={mode}
-        onUpload={office ? onUploadSignedDocument : undefined}
+        onUpload={onUploadSignedDocument}
+        onReviewDocument={office ? onReviewDocument : undefined}
       />
 
       <DetailSection title="Status history" description="Every move this file has made through the pipeline.">

@@ -5,6 +5,24 @@ import type { AuthRole } from '@/types/auth';
  * (see backend/src/routes/material.routes.js).
  */
 
+/**
+ * Somebody who works from the installation van.
+ *
+ * The `department` field came first: installer accounts were created as
+ * `role: 'agent'` and then put in the installation department. The dedicated
+ * `installation_team` role arrived later, so both spellings exist in the database
+ * and mean the same job. Every gate below runs on the effective role, which keeps
+ * an existing installer out of the sales screens and inside the crew's.
+ */
+export const isInstallationCrew = (user?: { role?: AuthRole; department?: string } | null): boolean => {
+  if (!user) return false;
+  return user.role === 'installation_team' || (user.role === 'agent' && user.department === 'installation');
+};
+
+/** What the account actually works as, once the department has its say. */
+export const effectiveRole = (role?: AuthRole, department?: string): AuthRole | undefined =>
+  isInstallationCrew({ role, department }) ? 'installation_team' : role;
+
 const MANAGER_ROLES: AuthRole[] = ['admin', 'manager', 'warehouse_staff', 'administration'];
 const STOCK_ROLES: AuthRole[] = ['admin', 'manager', 'administration'];
 const DELETE_ROLES: AuthRole[] = ['admin', 'administration'];
@@ -33,10 +51,31 @@ const CUSTOMER_EDITOR_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
 export const canManageCustomers = (role?: AuthRole): boolean => (role ? CUSTOMER_EDITOR_ROLES.includes(role) : false);
 export const canDeleteCustomer = (role?: AuthRole): boolean => (role === 'admin');
 
-export const canManageInstallations = (role?: AuthRole): boolean => (role ? INSTALLATION_EDITOR_ROLES.includes(role) : false);
-export const canReviewBom = (role?: AuthRole): boolean => canManageInstallations(role);
-export const canAssignMaterials = (role?: AuthRole): boolean => (role ? INSTALLATION_EDITOR_ROLES.includes(role) : false);
+export const canManageInstallations = (role?: AuthRole, department?: string): boolean => {
+  const r = effectiveRole(role, department);
+  return r ? INSTALLATION_EDITOR_ROLES.includes(r) : false;
+};
+export const canReviewBom = (role?: AuthRole, department?: string): boolean =>
+  canManageInstallations(role, department);
+export const canAssignMaterials = (role?: AuthRole, department?: string): boolean => {
+  const r = effectiveRole(role, department);
+  return r ? INSTALLATION_EDITOR_ROLES.includes(r) : false;
+};
 export const canDeleteInstallation = (role?: AuthRole): boolean => (role === 'admin');
+
+/**
+ * Starting an installation is the office's job: it is filed from an application
+ * and the crew is assigned to it. The crew join an existing job, they do not
+ * create one, so `installation_team` is deliberately absent here even though it
+ * may edit the job it was sent to.
+ */
+export const canCreateInstallation = (role?: AuthRole, department?: string): boolean => {
+  const r = effectiveRole(role, department);
+  return r === 'admin' || r === 'manager';
+};
+
+/** Putting names on a job is office work too — a fitter cannot add himself. */
+export const canAssignCrew = (role?: AuthRole): boolean => role === 'admin' || role === 'manager';
 
 /**
  * BOM template gates mirroring backend/src/routes/bomTemplate.routes.js:
@@ -93,14 +132,17 @@ export const canDownloadQuotationPdf = (role?: AuthRole): boolean => (role ? QUO
  */
 const APPLICATION_INTAKE_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
 
-export const canViewApplications = (role?: AuthRole): boolean =>
-  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
-export const canCreateApplication = (role?: AuthRole): boolean =>
-  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
-export const canViewApplicationStats = (role?: AuthRole): boolean =>
-  role ? APPLICATION_INTAKE_ROLES.includes(role) : false;
+export const canViewApplications = (role?: AuthRole, department?: string): boolean => {
+  const r = effectiveRole(role, department);
+  return r ? APPLICATION_INTAKE_ROLES.includes(r) : false;
+};
+export const canCreateApplication = (role?: AuthRole, department?: string): boolean =>
+  canViewApplications(role, department);
+export const canViewApplicationStats = (role?: AuthRole, department?: string): boolean =>
+  canViewApplications(role, department);
 /** The agent's own dashboard (applications only) instead of the office dashboard. */
-export const canViewAgentDashboard = (role?: AuthRole): boolean => role === 'agent';
+export const canViewAgentDashboard = (role?: AuthRole, department?: string): boolean =>
+  effectiveRole(role, department) === 'agent';
 
 /**
  * Who may fill in and submit an application.

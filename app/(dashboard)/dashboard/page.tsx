@@ -19,7 +19,9 @@ import { installationsApi } from '@/lib/api/installations.api';
 import { customersApi } from '@/lib/api/customers.api';
 import { purchasesApi } from '@/lib/api/purchases.api';
 import { AgentDashboard } from '@/components/features/agent/AgentDashboard';
+import { InstallationDashboard } from '@/components/features/installations/InstallationDashboard';
 import { installationStatusStyle } from '@/components/features/installations/installationStatus';
+import { isInstallationCrew } from '@/lib/permissions';
 import { useAuth } from '@/hooks/useAuth';
 import type { MaterialSummary, MaterialDocument } from '@/types/material';
 import type { InstallationDocument } from '@/types/installation';
@@ -120,6 +122,19 @@ export default function DashboardPage() {
         </div>
       </main>
     );
+  }
+
+  /*
+   * The installation department gets its own board. It used to fall through to the
+   * office dashboard: enquiry counts, quotation pipeline and revenue, none of which
+   * a fitter in a van can act on.
+   *
+   * `isInstallationCrew` rather than a role comparison: the installers already in
+   * the database were created as `role: 'agent'` and put in the installation
+   * department. Comparing `role` is exactly why they kept landing on sales.
+   */
+  if (isInstallationCrew(user)) {
+    return <InstallationDashboard user={user} />;
   }
 
   if (user.role === 'agent') {

@@ -9,31 +9,63 @@ import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { InstallationForm } from '@/components/features/installations/InstallationForm';
 import { BOMExcelEditor } from '@/components/features/installations/BOMExcelEditor';
 import { useInstallations } from '@/hooks/useInstallations';
-import { customersApi } from '@/lib/api/customers.api';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import type { CreateInstallationResponse } from '@/lib/api/installations.api';
-import type { Customer } from '@/types/customer';
+import {
+  installationsApi,
+  type CreateInstallationResponse,
+  type InstallableApplication,
+} from '@/lib/api/installations.api';
 
 function NewInstallationPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedId = searchParams.get('customer');
-  
+  const preselectedCustomerId = searchParams.get('customer');
+  const preselectedApplicationId = searchParams.get('application');
+
   const { createInstallation } = useInstallations();
-  const [initialCustomer, setInitialCustomer] = useState<Customer | null>(null);
-  const [customerLoading, setCustomerLoading] = useState(false);
+  const [initialApplication, setInitialApplication] = useState<InstallableApplication | null>(null);
+  const [customerLoading, setCustomerLoading] = useState(
+    Boolean(preselectedCustomerId || preselectedApplicationId)
+  );
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreateInstallationResponse | null>(null);
   
+  /**
+   * Arriving from a customer's or an application's own page.
+   *
+   * The selection is an application now, so the id in the URL is looked up in the
+   * installable list — the same list the picker shows. If it is not there, the
+   * customer either has no application or already has an installation, and the
+   * message says so instead of pre-filling a form that cannot be saved.
+   */
   useEffect(() => {
-    if (!preselectedId) return;
+    if (!preselectedCustomerId && !preselectedApplicationId) return;
+
     let active = true;
-    customersApi
-      .get(preselectedId)
+
+    installationsApi
+      .installableApplications()
       .then((res) => {
-        if (active) setInitialCustomer(res.data);
+        if (!active) return;
+
+        const list = Array.isArray(res.data) ? res.data : [];
+        const match = preselectedApplicationId
+          ? list.find((item) => item._id === preselectedApplicationId)
+          : list.find((item) => {
+              const id = typeof item.customer === 'object' && item.customer ? item.customer._id : item.customer;
+              return id === preselectedCustomerId;
+            });
+
+        if (match) {
+          setInitialApplication(match);
+          return;
+        }
+
+        setCustomerError(
+          'That customer has no application waiting for installation — either the application was never filed, or an installation already exists.'
+        );
       })
       .catch((err) => {
         if (active) setCustomerError(handleApiError(err));
@@ -41,8 +73,9 @@ function NewInstallationPageInner() {
       .finally(() => {
         if (active) setCustomerLoading(false);
       });
+
     return () => { active = false; };
-  }, [preselectedId]);
+  }, [preselectedApplicationId, preselectedCustomerId]);
   
   const handleSubmit = useCallback(
     async (payload: Parameters<typeof createInstallation>[0]) => {
@@ -153,11 +186,11 @@ function NewInstallationPageInner() {
           {customerLoading ? (
             <div className="flex items-center gap-3 py-10 text-sm text-[var(--muted)]">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading customer…
+              Loading application…
             </div>
           ) : (
             <InstallationForm
-              initialCustomer={initialCustomer}
+              initialApplication={initialApplication}
               submitting={submitting}
               onSubmit={handleSubmit}
             />

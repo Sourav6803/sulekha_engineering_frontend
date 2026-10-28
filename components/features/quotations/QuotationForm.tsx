@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Plus, RotateCcw, X } from 'lucide-react';
 import { BOQItemsEditor } from './BOQItemsEditor';
 import { buildTemplateItems } from './boqTemplate';
 import { STRUCTURE_OPTIONS, formatDocumentAmount } from './quotationDisplay';
@@ -336,6 +336,38 @@ export function QuotationForm({
   const [items, setItems] = useState<QuotationItem[]>(() => initial?.items ?? []);
   const [panelQtyTouched, setPanelQtyTouched] = useState(Boolean(initial?.panelQty));
 
+  /*
+   * Terms and payment terms are the sheet's own, not the company's only.
+   *
+   * They start from the standard wording — including on a fresh sheet, once the
+   * defaults for the chosen type arrive — and stay editable line by line. A
+   * one-off clause (an extra AMC year, a different GST note, a partner's split)
+   * used to be impossible to write at all.
+   */
+  const [terms, setTerms] = useState<Array<{ label: string | null; text: string }>>(() =>
+    (initial?.terms ?? []).map((term) => ({ label: term.label ?? null, text: term.text }))
+  );
+  const [paymentTerms, setPaymentTerms] = useState<Array<{ text: string }>>(() =>
+    (initial?.paymentTerms ?? []).map((term) => ({ text: term.text }))
+  );
+  /**
+   * Once the operator has touched a line, the standard wording stops arriving —
+   * otherwise switching the sheet would silently overwrite what they wrote. Until
+   * then it follows the chosen sheet, the way the server copies it.
+   */
+  const termsEdited = useRef(Boolean(initial));
+  const paymentTermsEdited = useRef(Boolean(initial));
+
+  useEffect(() => {
+    if (termsEdited.current || fixedTerms.length === 0) return;
+    setTerms(fixedTerms.map((term) => ({ label: term.label ?? null, text: term.text })));
+  }, [fixedTerms]);
+
+  useEffect(() => {
+    if (paymentTermsEdited.current || fixedPaymentTerms.length === 0) return;
+    setPaymentTerms(fixedPaymentTerms.map((term) => ({ text: term.text })));
+  }, [fixedPaymentTerms]);
+
   /**
    * BOQ lines the operator has edited by hand. The standard template keeps up
    * with the system details on the untouched lines only, so rewording the panel
@@ -600,7 +632,17 @@ export function QuotationForm({
         qty: normaliseQty(item.qty),
         order: index + 1,
       })),
-      // terms / paymentTerms are fixed company-wide and are never sent.
+      /*
+       * The wording this sheet prints. Blank lines are dropped here as well as on
+       * the server: an empty textarea would otherwise be sent and print as an
+       * empty bullet.
+       */
+      terms: terms
+        .filter((term) => term.text.trim().length > 0)
+        .map((term) => ({ label: term.label ?? null, text: term.text.trim() })),
+      paymentTerms: paymentTerms
+        .filter((term) => term.text.trim().length > 0)
+        .map((term) => ({ text: term.text.trim() })),
     };
 
     // The scheme is embedded in the number, so it may only be chosen on create.
@@ -1052,16 +1094,17 @@ export function QuotationForm({
         </div>
       </section>
 
-      {/* Fixed wording */}
+      {/* Wording that this sheet carries */}
       <section className="space-y-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
           Terms and payment terms
           <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-normal text-[var(--muted)]">
-            fixed
+            editable
           </span>
         </h3>
         <p className="text-xs text-[var(--muted)]">
-          The same on every quotation — change them once in the company settings and every document follows.
+          Starts from your standard wording for this sheet. Edit a line, remove it, or add one — what is written here
+          is what the PDF prints.
         </p>
 
         <div className="grid gap-3 lg:grid-cols-2">
@@ -1069,28 +1112,100 @@ export function QuotationForm({
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Terms &amp; condition
             </p>
-            {fixedTerms.length ? (
-              <ol className="mt-2 space-y-1 text-xs text-[var(--secondary)]">
-                {fixedTerms.map((term, index) => (
-                  <li key={`fixed-term-${index}`}>{term.text}</li>
-                ))}
-              </ol>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--muted)]">Applied from the company settings on save.</p>
-            )}
+            <div className="mt-2 space-y-2">
+              {terms.map((term, index) => (
+                <div key={`term-${index}`} className="flex items-start gap-2">
+                  <textarea
+                    className="form-input min-h-[52px] flex-1 text-xs"
+                    value={term.text}
+                    maxLength={300}
+                    rows={2}
+                    onChange={(event) => {
+                      termsEdited.current = true;
+                      setTerms((prev) =>
+                        prev.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, text: event.target.value } : row
+                        )
+                      );
+                    }}
+                    disabled={submitting}
+                    aria-label={`Term ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className="mt-1 text-[var(--muted)] hover:text-[var(--error)] disabled:opacity-50"
+                    onClick={() => {
+                      termsEdited.current = true;
+                      setTerms((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+                    }}
+                    disabled={submitting}
+                    aria-label={`Remove term ${index + 1}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-active)] disabled:opacity-50"
+              onClick={() => {
+                termsEdited.current = true;
+                setTerms((prev) => [...prev, { label: null, text: '' }]);
+              }}
+              disabled={submitting}
+            >
+              <Plus className="h-3 w-3" /> Add term
+            </button>
           </div>
 
           <div className="rounded-lg bg-[var(--surface-muted)] p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Payment terms</p>
-            {fixedPaymentTerms.length ? (
-              <ul className="mt-2 space-y-1 text-xs text-[var(--secondary)]">
-                {fixedPaymentTerms.map((term, index) => (
-                  <li key={`fixed-payment-${index}`}>{term.text}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--muted)]">Applied from the company settings on save.</p>
-            )}
+            <div className="mt-2 space-y-2">
+              {paymentTerms.map((term, index) => (
+                <div key={`payment-term-${index}`} className="flex items-start gap-2">
+                  <textarea
+                    className="form-input min-h-[44px] flex-1 text-xs"
+                    value={term.text}
+                    maxLength={200}
+                    rows={2}
+                    onChange={(event) => {
+                      paymentTermsEdited.current = true;
+                      setPaymentTerms((prev) =>
+                        prev.map((row, rowIndex) =>
+                          rowIndex === index ? { text: event.target.value } : row
+                        )
+                      );
+                    }}
+                    disabled={submitting}
+                    aria-label={`Payment term ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className="mt-1 text-[var(--muted)] hover:text-[var(--error)] disabled:opacity-50"
+                    onClick={() => {
+                      paymentTermsEdited.current = true;
+                      setPaymentTerms((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+                    }}
+                    disabled={submitting}
+                    aria-label={`Remove payment term ${index + 1}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-active)] disabled:opacity-50"
+              onClick={() => {
+                paymentTermsEdited.current = true;
+                setPaymentTerms((prev) => [...prev, { text: '' }]);
+              }}
+              disabled={submitting}
+            >
+              <Plus className="h-3 w-3" /> Add line
+            </button>
           </div>
         </div>
 

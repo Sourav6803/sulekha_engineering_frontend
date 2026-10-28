@@ -165,8 +165,25 @@ export function useApplications() {
   );
 
   const uploadSignedDocument = useCallback(
-    (id: string, file: File, kind?: ApplicationDocumentKind) =>
-      applicationsApi.uploadSignedDocument(id, file, kind),
+    (
+      id: string,
+      file: File,
+      kind?: ApplicationDocumentKind,
+      meta: { signedOn?: string; note?: string } = {}
+    ) => applicationsApi.uploadSignedDocument(id, file, kind, meta),
+    []
+  );
+
+  /** Office: build + render the unsigned quotation/agreement from the application. */
+  const issueQuotation = useCallback(
+    (id: string, payload: { amount?: number } = {}) =>
+      applicationsApi.issueQuotation(id, payload),
+    []
+  );
+
+  const issueAgreement = useCallback(
+    (id: string, payload: { amount?: number } = {}) =>
+      applicationsApi.issueAgreement(id, payload),
     []
   );
 
@@ -197,5 +214,7 @@ export function useApplications() {
     reviewApplication,
     updateStatus,
     uploadSignedDocument,
+    issueQuotation,
+    issueAgreement,
   };
 }

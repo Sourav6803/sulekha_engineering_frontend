@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { ExternalLink, FileText, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
+import { ExternalLink, FileText, Loader2, ShieldCheck, ShieldOff, Upload } from 'lucide-react';
 import { humaniseEnum } from './applicationDisplay';
 import { formatDateShort, formatINR } from '@/lib/format';
 import type { ApplicationViewMode } from './ApplicationDocumentsSection';
@@ -161,13 +161,47 @@ interface ElectricBillSectionProps {
   mode?: ApplicationViewMode;
   /** PATCH /applications/:id/electric-bill/verify */
   onVerifyBill?: (payload: ApplicationElectricBillVerifyPayload) => Promise<string | null>;
+  /**
+   * POST /applications/:id/documents with `kind: 'electricBill'`.
+   *
+   * There is no separate bill-file endpoint — the PDF downloaded from the WBSEDCL
+   * portal is a checklist document, and filing it is what fills `bill.fileUrl`.
+   * Without this button the card says "Not attached" and offers no way to attach,
+   * which sends people hunting through the documents grid for the same upload.
+   */
+  onAttachBill?: (file: File) => Promise<string | null>;
 }
 
-export function ElectricBillSection({ application, mode = 'field', onVerifyBill }: ElectricBillSectionProps) {
+export function ElectricBillSection({
+  application,
+  mode = 'field',
+  onVerifyBill,
+  onAttachBill,
+}: ElectricBillSectionProps) {
   const bill = application.electricBill ?? {};
   const [note, setNote] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const billInputRef = useRef<HTMLInputElement>(null);
+  const [attachPending, setAttachPending] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+
+  const attachBill = async (file: File | null) => {
+    if (!file || !onAttachBill) return;
+
+    setAttachPending(true);
+    setAttachError(null);
+    try {
+      const failure = await onAttachBill(file);
+      if (failure) {
+        setAttachError(failure);
+        return;
+      }
+      if (billInputRef.current) billInputRef.current.value = '';
+    } finally {
+      setAttachPending(false);
+    }
+  };
 
   const office = mode === 'office' && Boolean(onVerifyBill);
   const idsRecorded = Boolean(bill.consumerId && bill.installationNo);
@@ -245,6 +279,42 @@ export function ElectricBillSection({ application, mode = 'field', onVerifyBill 
         }
         span
       />
+
+      {!bill.fileUrl && onAttachBill && (
+        <div className="min-w-0 sm:col-span-2 lg:col-span-3">
+          <div className="rounded-[1rem] border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+              Bill file not attached
+            </p>
+            <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
+              Download the bill from the WBSEDCL portal with the IDs above, then attach that PDF here. The office can
+              only mark the bill verified once the file is on the record.
+            </p>
+            <input
+              ref={billInputRef}
+              type="file"
+              accept="application/pdf,image/*"
+              className="mt-2 block w-full text-[11px] text-[var(--muted)] file:mr-2 file:cursor-pointer file:rounded-full file:border-0 file:bg-[var(--surface-strong)] file:px-3 file:py-1.5 file:text-[11px] file:font-semibold file:text-[var(--foreground)]"
+              disabled={attachPending}
+              onChange={(event) => void attachBill(event.target.files?.[0] ?? null)}
+              aria-label="Attach the electricity bill"
+            />
+            {attachPending && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+                <Loader2 className="h-3 w-3 animate-spin" /> Uploading the bill…
+              </p>
+            )}
+            {attachError && (
+              <p
+                role="alert"
+                className="mt-1.5 text-[11px] leading-4 text-[var(--error)] [overflow-wrap:anywhere]"
+              >
+                {attachError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {office && (
         <div className="min-w-0 sm:col-span-2 lg:col-span-3">

@@ -162,13 +162,19 @@ export function BOMExcelEditor({
           <p className="text-sm text-[var(--muted)]">
             {confirmed
               ? 'BOM is finalized and stock has been updated based on actual usage.'
-              : rows.length} items. {confirmed ? '' : 'Edit quantities as needed. Print or download Excel for the technician.'}
+              : readonly
+                ? `${rows.length} items. Read-only — print or download Excel for the site.`
+                : `${rows.length} items. Edit quantities as needed. Print or download Excel for the technician.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="ghost-button" onClick={resetToSuggested}>
-            Reset
-          </button>
+          {/* Reset rewrites the quantities in the browser; on a frozen sheet it is a
+              button that appears to work and changes nothing that sticks. */}
+          {!readonly && (
+            <button type="button" className="ghost-button" onClick={resetToSuggested}>
+              Reset
+            </button>
+          )}
           <button type="button" className="neutral-button" onClick={handlePrint}>
             <Printer className="h-4 w-4" />
             Print

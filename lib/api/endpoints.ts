@@ -21,7 +21,17 @@ export const ENDPOINTS = {
   installations: {
     root: '/installations',
     suggestedBOM: '/installations/suggested-bom',
+    installableApplications: '/installations/installable-applications',
     byId: (id: string) => `/installations/${id}`,
+    dashboard: '/installations/dashboard',
+    teamCandidates: '/installations/team-candidates',
+    team: (id: string) => `/installations/${id}/team`,
+    panels: (id: string) => `/installations/${id}/panels`,
+    panel: (id: string, panelId: string) => `/installations/${id}/panels/${panelId}`,
+    inverter: (id: string) => `/installations/${id}/inverter`,
+    evidencePhoto: (id: string) => `/installations/${id}/evidence-photo`,
+    evidenceGaps: (id: string) => `/installations/${id}/evidence-gaps`,
+    complete: (id: string) => `/installations/${id}/complete`,
     materials: (id: string) => `/installations/${id}/materials`,
     reverseMaterial: (id: string, usageId: string) => `/installations/${id}/materials/${usageId}/reverse`,
     bomPdf: (id: string) => `/installations/${id}/bom-pdf`,
@@ -134,7 +144,10 @@ export const ENDPOINTS = {
     nameMatch: (id: string) => `/applications/${id}/name-match`,
     review: (id: string) => `/applications/${id}/review`,
     status: (id: string) => `/applications/${id}/status`,
-    signedDocument: (id: string) => `/applications/${id}/signed-document`
+    signedDocument: (id: string) => `/applications/${id}/signed-document`,
+    /** Build + render the unsigned quotation and file the PDF on the application. */
+    issueQuotation: (id: string) => `/applications/${id}/issue-quotation`,
+    issueAgreement: (id: string) => `/applications/${id}/issue-agreement`
   },
   health: '/health'
 };

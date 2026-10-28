@@ -14,6 +14,8 @@ import {
 import { toast } from 'sonner';
 import { Modal } from '@/components/shared/Modal';
 import { BOMAssignmentForm } from './BOMAssignmentForm';
+import { InstallationEvidenceCard } from './InstallationEvidenceCard';
+import { InstallationTeamCard } from './InstallationTeamCard';
 import { BOMExcelEditor } from './BOMExcelEditor';
 import { installationStatusStyle, INSTALLATION_STATUS, ROOF_TYPE_LABEL } from './installationStatus';
 import { formatINR, formatNumber, formatDateShort } from '@/lib/format';
@@ -25,7 +27,17 @@ import type { InstallationDocument, InstallationMaterialUsage, SuggestedBOMSecti
 interface InstallationDetailViewProps {
   installation: InstallationDocument;
   canAssign: boolean;
+  /** Office only: the crew that goes to the roof is chosen here, not by itself. */
+  canAssignCrew?: boolean;
+  /**
+   * Office only as well: the BOM, the material confirmation and the two PDF
+   * buttons. The crew reads the sheet it installs from and writes evidence; it
+   * does not price, edit or sign off materials.
+   */
+  canEditBom?: boolean;
   onRefetch: () => Promise<void> | void;
+  /** The crew and the office write evidence; a sales login only reads it. */
+  canEditEvidence?: boolean;
 }
 
 function customerName(installation: InstallationDocument): string {
@@ -62,7 +74,14 @@ function suggestedGroups(sections: SuggestedBOMSection[]) {
     .map(([section, group]) => ({ section, items: group.items }));
 }
 
-export function InstallationDetailView({ installation, canAssign, onRefetch }: InstallationDetailViewProps) {
+export function InstallationDetailView({
+  installation,
+  canAssign,
+  canAssignCrew = false,
+  canEditBom = true,
+  onRefetch,
+  canEditEvidence = true,
+}: InstallationDetailViewProps) {
   const status = installationStatusStyle(installation.status);
   const installed = installation.materialsUsed.filter((u) => u.status !== 'reversed');
   const hasConfirmed = installed.length > 0;
@@ -192,27 +211,30 @@ export function InstallationDetailView({ installation, canAssign, onRefetch }: I
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="neutral-button"
-              onClick={() => void handleDownloadPdf('suggested')}
-              disabled={downloading === 'suggested'}
-            >
-              {downloading === 'suggested' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Suggested PDF
-            </button>
-            <button
-              type="button"
-              className="brand-button"
-              onClick={() => void handleDownloadPdf('final')}
-              disabled={!hasConfirmed || downloading === 'final'}
-              title={hasConfirmed ? undefined : 'Confirm materials first'}
-            >
-              {downloading === 'final' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Final BOM
-            </button>
-          </div>
+          {/* The two BOM PDFs are paperwork, not site work — office only. */}
+          {canEditBom && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="neutral-button"
+                onClick={() => void handleDownloadPdf('suggested')}
+                disabled={downloading === 'suggested'}
+              >
+                {downloading === 'suggested' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Suggested PDF
+              </button>
+              <button
+                type="button"
+                className="brand-button"
+                onClick={() => void handleDownloadPdf('final')}
+                disabled={!hasConfirmed || downloading === 'final'}
+                title={hasConfirmed ? undefined : 'Confirm materials first'}
+              >
+                {downloading === 'final' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Final BOM
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -247,6 +269,16 @@ export function InstallationDetailView({ installation, canAssign, onRefetch }: I
         )}
       </section>
 
+      {/* Who the job belongs to — this is what the crew's board reads */}
+      {canAssignCrew && <InstallationTeamCard installation={installation} onChanged={onRefetch} />}
+
+      {/* What the crew records on the roof */}
+      <InstallationEvidenceCard
+        installation={installation}
+        onChanged={onRefetch}
+        editable={canEditEvidence}
+      />
+
       {/* Editable BOM Excel */}
       <section className="surface-card p-5 sm:p-6">
         <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -262,7 +294,9 @@ export function InstallationDetailView({ installation, canAssign, onRefetch }: I
             systemSizeKW={installation.systemSizeKW}
             roofType={installation.roofType || undefined}
             variant={hasConfirmed ? 'final' : 'suggested'}
-            readonly={hasConfirmed}
+            // A confirmed BOM is frozen for everybody; an unconfirmed one is frozen
+            // for the crew, who read the sheet instead of editing it.
+            readonly={hasConfirmed || !canEditBom}
             materialsUsed={installed}
             onSave={onRefetch}
           />
@@ -360,17 +394,19 @@ export function InstallationDetailView({ installation, canAssign, onRefetch }: I
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <button
-                          type="button"
-                          className="ghost-button !px-3 !py-1.5 text-xs"
-                          onClick={() => {
-                            setReverseTarget(usage);
-                            setReverseReason('');
-                            setReverseError(null);
-                          }}
-                        >
-                          Reverse
-                        </button>
+                        {canAssign && (
+                          <button
+                            type="button"
+                            className="ghost-button !px-3 !py-1.5 text-xs"
+                            onClick={() => {
+                              setReverseTarget(usage);
+                              setReverseReason('');
+                              setReverseError(null);
+                            }}
+                          >
+                            Reverse
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

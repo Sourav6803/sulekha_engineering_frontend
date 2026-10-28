@@ -18,6 +18,7 @@ import {
   FileText,
   FileSignature,
   ListOrdered,
+  FileUp,
   UserCog,
   X,
   Sun,
@@ -27,6 +28,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { effectiveRole } from "@/lib/permissions";
 import type { AuthRole } from "@/types/auth";
 import { useSidebarStore } from "@/store/useSidebarStore";
 import { useUIStore } from "@/store/useUIStore";
@@ -56,14 +58,14 @@ const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
  * The field agent only collects consumer applications, so it sees the
  * dashboard, its applications and notifications — nothing from the office side.
  */
-const OFFICE_ROLES: AuthRole[] = [
-  'admin',
-  'manager',
-  'warehouse_staff',
-  'installation_team',
-  'viewer',
-  'administration',
-];
+/*
+ * The office. `installation_team` used to sit here, which put Materials, Suppliers,
+ * BOM templates and Quotations in the crew's menu. Those screens answer 403 for
+ * them — the crew's permissions are installations only — so the menu offered a
+ * department's worth of links that dead-ended. The crew's own entry is listed
+ * explicitly on /installations below.
+ */
+const OFFICE_ROLES: AuthRole[] = ['admin', 'manager', 'warehouse_staff', 'viewer', 'administration'];
 
 /** Applications are shared by the field agents and the roles that oversee them. */
 const APPLICATION_ROLES: AuthRole[] = ['admin', 'manager', 'agent'];
@@ -97,7 +99,9 @@ const NAV_ENTRIES: NavEntry[] = [
   { href: "/agents", label: "Agents", icon: UserCog, roles: AGENT_ADMIN_ROLES },
   { href: "/materials", label: "Materials", icon: Package, roles: OFFICE_ROLES },
   { href: "/suppliers", label: "Suppliers", icon: Truck, roles: OFFICE_ROLES },
-  { href: "/installations", label: "Installations", icon: Wrench, roles: OFFICE_ROLES },
+  // The crew needs this menu too — their whole day lives behind it.
+  { href: "/installations", label: "Installations", icon: Wrench, roles: [...OFFICE_ROLES, "installation_team"] },
+
   {
     key: "quotation",
     label: "Quotation",
@@ -106,6 +110,12 @@ const NAV_ENTRIES: NavEntry[] = [
     children: [
       { href: "/quotations", label: "Quotations", icon: FileText },
       { href: "/quotations/serial", label: "Quotation SL Number", icon: ListOrdered },
+      /*
+       * The one-off back-fill screen. It was reachable only by typing the URL,
+       * which is why nobody knew the register import existed. Admin only — the
+       * page and the endpoint both refuse anybody else.
+       */
+      { href: "/quotations/import", label: "Import old quotations", icon: FileUp, roles: ["admin"] },
     ],
   },
   // The consumer agreement (4 page PM Surya Ghar document) has its own menu:
@@ -130,7 +140,13 @@ const NAV_ENTRIES: NavEntry[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const role = user?.role;
+  /*
+   * The menu follows what the account works as, not the role it was created
+   * with. An installer sitting in the installation department carries
+   * `role: 'agent'` from before the crew role existed; reading `role` alone gave
+   * him the sales menu and the sales dashboard.
+   */
+  const role = effectiveRole(user?.role, user?.department);
   const isOpen = useSidebarStore((state) => state.isOpen);
   const closeMobile = useSidebarStore((state) => state.closeMobile);
   const isCollapsed = useSidebarStore((state) => state.isCollapsed);
@@ -147,7 +163,13 @@ export default function Sidebar() {
    * read the full list is shown, which is exactly the previous behaviour.
    */
   const navEntries = role
-    ? NAV_ENTRIES.filter((entry) => !entry.roles || entry.roles.includes(role))
+    ? NAV_ENTRIES.filter((entry) => !entry.roles || entry.roles.includes(role)).map((entry) =>
+        isGroup(entry)
+          ? // Children are gated too, not just the group. A child the role cannot
+            // reach is a menu link that dead-ends on a "not allowed" screen.
+            { ...entry, children: entry.children.filter((child) => !child.roles || child.roles.includes(role)) }
+          : entry
+      )
     : NAV_ENTRIES;
 
   /**

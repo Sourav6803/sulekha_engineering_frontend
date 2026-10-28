@@ -13,7 +13,7 @@ import { InstallationDetailView } from '@/components/features/installations/Inst
 import { installationsApi } from '@/lib/api/installations.api';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { canAssignMaterials, canDeleteInstallation } from '@/lib/permissions';
+import { canAssignCrew, canDeleteInstallation, canManageInstallations } from '@/lib/permissions';
 import type { InstallationDocument } from '@/types/installation';
 
 export default function InstallationDetailPage() {
@@ -21,7 +21,13 @@ export default function InstallationDetailPage() {
   const id = params.id;
 
   const { user } = useAuth();
-  const canAssign = canAssignMaterials(user?.role);
+  /*
+   * Materials and the BOM are office decisions. `canAssignCrew` is admin/manager
+   * only, so the crew — whoever carries the job — gets a frozen sheet, no
+   * material form, no reversal and no BOM PDF buttons.
+   */
+  const manageBom = canAssignCrew(user?.role);
+  const assignCrew = manageBom;
   const canDelete = canDeleteInstallation(user?.role);
 
   const [installation, setInstallation] = useState<InstallationDocument | null>(null);
@@ -145,7 +151,16 @@ export default function InstallationDetailPage() {
         </div>
       }
     >
-      <InstallationDetailView installation={installation} canAssign={canAssign} onRefetch={() => load(false)} />
+      <InstallationDetailView
+        installation={installation}
+        canAssign={manageBom}
+        canAssignCrew={assignCrew}
+        canEditBom={manageBom}
+        onRefetch={() => load(false)}
+        // The crew that did the job records the evidence, the office can correct
+        // it, and a sales login sees it read-only.
+        canEditEvidence={canManageInstallations(user?.role, user?.department)}
+      />
 
       <ConfirmDialog
         open={deleteOpen}

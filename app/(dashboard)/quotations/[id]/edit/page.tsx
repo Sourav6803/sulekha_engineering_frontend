@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { Modal } from '@/components/shared/Modal';
 import { QuotationForm } from '@/components/features/quotations/QuotationForm';
+import { applicationsApi } from '@/lib/api/applications.api';
 import { quotationsApi } from '@/lib/api/quotations.api';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuotationDefaults } from '@/hooks/useQuotations';
@@ -31,6 +32,17 @@ export default function EditQuotationPage() {
   const [pending, setPending] = useState<QuotationPayload | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  /**
+   * `?applicationId=` — opened from an application, so saving must also re-file
+   * the PDF there and tell the agent. Read from the URL in an effect rather than
+   * with `useSearchParams`, which would drag a Suspense boundary into this page.
+   */
+  const [applicationId, setApplicationId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setApplicationId(new URLSearchParams(window.location.search).get('applicationId') ?? undefined);
+  }, []);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -61,8 +73,20 @@ export default function EditQuotationPage() {
     try {
       const response = await quotationsApi.update(quotation._id, pending);
       const { warnings } = response.data;
-      toast.success('Quotation updated', { description: response.message });
       warnings?.forEach((warning) => toast.warning('Please check', { description: warning }));
+
+      if (applicationId) {
+        // The edited sheet is the one the consumer signs, so the copy on the
+        // application is replaced now — otherwise the agent prints the old price.
+        await applicationsApi.issueQuotation(applicationId, { quotationId: quotation._id });
+        toast.success('Quotation updated and re-filed on the application', {
+          description: 'The new PDF is on the file and the agent has been notified.',
+        });
+        router.push(`/applications/${applicationId}`);
+        return;
+      }
+
+      toast.success('Quotation updated', { description: response.message });
       router.push(`/quotations/${quotation._id}`);
     } catch (err) {
       toast.error('Could not save the changes', { description: handleApiError(err) });

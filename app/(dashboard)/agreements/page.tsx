@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FileSignature, Plus, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
@@ -13,12 +14,15 @@ import { AgreementForm, type QuotationOption } from '@/components/features/agree
 import { AgreementTable } from '@/components/features/agreements/AgreementTable';
 import { useAgreementDefaults, useAgreements } from '@/hooks/useAgreements';
 import { useAuth } from '@/hooks/useAuth';
+import { agreementsApi } from '@/lib/api/agreements.api';
+import { applicationsApi } from '@/lib/api/applications.api';
 import { quotationsApi } from '@/lib/api/quotations.api';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { canDeleteAgreement, canManageAgreements } from '@/lib/permissions';
 import type { AgreementDocument, AgreementListQuery, AgreementPayload } from '@/types/agreement';
 
 export default function AgreementsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const canEdit = canManageAgreements(user?.role);
   const canDelete = canDeleteAgreement(user?.role);
@@ -69,12 +73,56 @@ export default function AgreementsPage() {
       .catch(() => undefined);
   }, []);
 
+  /**
+   * `?applicationId=` — this agreement is being written for an application, so
+   * saving has to link it there, file the PDF and tell the agent instead of just
+   * returning to the list. `?new=1` / `?edit=<id>` let the application card open
+   * the right form directly, since that is where the office starts from.
+   */
+  const [applicationId, setApplicationId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('applicationId') ?? undefined;
+    const editId = params.get('edit');
+    const isNew = params.get('new') === '1';
+
+    setApplicationId(id);
+    if (isNew) setCreating(true);
+
+    if (editId && id) {
+      void agreementsApi
+        .get(editId)
+        .then((response) => setEditing(response.data))
+        .catch(() => toast.error('Could not open that agreement'));
+    }
+  }, []);
+
+  /** Link + render + file on the application, then go back to it. */
+  const fileOnApplication = async (agreementId: string) => {
+    if (!applicationId) return false;
+
+    await applicationsApi.issueAgreement(applicationId, { agreementId });
+    toast.success('Agreement filed on the application', {
+      description: 'The PDF is on the file and the agent has been notified.',
+    });
+    router.push(`/applications/${applicationId}`);
+    return true;
+  };
+
   const handleCreate = async (payload: AgreementPayload) => {
     setBusy(true);
     try {
       const response = await createAgreement(payload);
-      toast.success('Agreement created', { description: response.message });
       setCreating(false);
+
+      // Written for an application: link, render and file it, then hand the
+      // operator back to the application they started from.
+      if (await fileOnApplication(response.data._id)) return;
+
+      toast.success('Agreement created', { description: response.message });
       await load();
     } catch (err) {
       toast.error('Could not create the agreement', { description: handleApiError(err) });
@@ -88,8 +136,13 @@ export default function AgreementsPage() {
     setBusy(true);
     try {
       const response = await updateAgreement(editing._id, payload);
-      toast.success('Agreement updated', { description: response.message });
       setEditing(null);
+
+      // An edit changes what the consumer signs, so the copy on the application
+      // is replaced now rather than when somebody remembers to re-issue.
+      if (await fileOnApplication(editing._id)) return;
+
+      toast.success('Agreement updated', { description: response.message });
       await load();
     } catch (err) {
       toast.error('Could not update the agreement', { description: handleApiError(err) });

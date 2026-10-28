@@ -1,19 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Briefcase, ShieldAlert, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { Modal } from '@/components/shared/Modal';
 import { QuotationForm } from '@/components/features/quotations/QuotationForm';
 import { useQuotationDefaults, useQuotations } from '@/hooks/useQuotations';
+import { applicationsApi } from '@/lib/api/applications.api';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { canManageQuotations } from '@/lib/permissions';
 import type {
+  QuotationDocument,
   QuotationNextNumber,
   QuotationPayload,
   QuotationType,
@@ -63,13 +66,26 @@ const SHEET_BLURB: Record<QuotationType, string> = {
     'The business sheet, for a solar partner, an institutional client or a material supply order. No fixed pattern — you lay out the lines, the sections and the wording yourself.',
 };
 
-export default function NewQuotationPage() {
+function NewQuotationPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  /**
+   * `?applicationId=` — this sheet is being written for an application.
+   *
+   * The application page used to issue a quotation straight from its own fields,
+   * with the template BOQ and no way to touch a line. This is the other half: the
+   * same editor the office already knows, prefilled from the application, and on
+   * save the quotation is linked back, rendered and filed on the application.
+   */
+  const applicationId = searchParams.get('applicationId') ?? undefined;
   const { user } = useAuth();
   const canEdit = canManageQuotations(user?.role);
 
   const { createQuotation, fetchNextNumber, checkNumber } = useQuotations();
   const { defaults } = useQuotationDefaults();
+
+  const [prefill, setPrefill] = useState<QuotationDocument | null>(null);
+  const [prefillLoading, setPrefillLoading] = useState(Boolean(applicationId));
 
   const [quotationType, setQuotationType] = useState<QuotationType | null>(null);
   const [nextNumber, setNextNumber] = useState<QuotationNextNumber | null>(null);
@@ -98,11 +114,83 @@ export default function NewQuotationPage() {
     loadNextNumber();
   }, [loadNextNumber, quotationType]);
 
+  /**
+   * Read the application and turn its identity into a starting point for the
+   * sheet. Only the fields the customer already gave us — every BOQ line, term
+   * and amount stays the operator's to change, which is the whole point of coming
+   * through the editor instead of issuing from defaults.
+   *
+   * `items` is left empty on purpose: the form seeds the company's standard BOQ
+   * template itself and keeps the untouched lines in step with the system size.
+   */
+  useEffect(() => {
+    if (!applicationId) return;
+
+    let cancelled = false;
+
+    applicationsApi
+      .get(applicationId)
+      .then((response) => {
+        if (cancelled) return;
+
+        const application = response.data.application;
+        const address = application.address ?? {};
+        const line1 = [address.street, address.village].filter(Boolean).join(', ');
+        const line2 = [address.block, address.panchayat].filter(Boolean).join(', ');
+
+        setPrefill({
+          customerName: application.consumerName ?? '',
+          consumerId: application.electricBill?.consumerId ?? '',
+          phoneNo: application.phone ?? '',
+          addressLine1: line1,
+          addressLine2: line2,
+          district: address.district ?? '',
+          pincode: address.pincode ?? '',
+          systemSizeKW: application.deal?.systemSizeKW ?? undefined,
+          amount:
+            application.deal?.quotedAmount ?? application.deal?.proposalAmount ?? undefined,
+          quotationType: 'consumer',
+          items: [],
+        } as unknown as QuotationDocument);
+
+        // A quotation for an application is a consumer sheet; the chooser would
+        // only offer a choice that cannot be honoured here.
+        setQuotationType('consumer');
+      })
+      .catch(() => {
+        // Let the operator pick a sheet and type the identity by hand rather than
+        // stranding them on an empty screen.
+        if (!cancelled) setQuotationType(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPrefillLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId]);
+
   const handleSubmit = async (payload: QuotationPayload) => {
     setSubmitting(true);
     setError(null);
     try {
       const response = await createQuotation({ ...payload, quotationType: quotationType ?? 'consumer' });
+
+      if (applicationId) {
+        /*
+         * Filing the paper is the second half of "issue". Doing it here means the
+         * office never has to remember a second click, and the PDF on the
+         * application is always the quotation they just saved.
+         */
+        await applicationsApi.issueQuotation(applicationId, { quotationId: response.data._id });
+        toast.success('Quotation saved and filed on the application', {
+          description: 'The PDF is on the file and the agent has been notified.',
+        });
+        router.push(`/applications/${applicationId}`);
+        return;
+      }
+
       toast.success('Quotation created', { description: response.message });
       router.push(`/quotations/${response.data._id}`);
     } catch (err) {
@@ -181,6 +269,25 @@ export default function NewQuotationPage() {
     </Modal>
   );
 
+  // Reading the application the sheet is being written for — not an empty form,
+  // and not a flash of the sheet chooser.
+  if (prefillLoading) {
+    return (
+      <PageContainer>
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Quotations', href: '/quotations' },
+            { label: 'New' },
+          ]}
+        />
+        <div className="mt-6">
+          <LoadingSpinner label="Reading the application…" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   if (quotationType === null) {
     return (
       <PageContainer>
@@ -240,6 +347,13 @@ export default function NewQuotationPage() {
         </button>
       </div>
 
+      {applicationId && (
+        <p className="mt-3 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          This quotation is for an application. On save it is linked to that application, the PDF is filed on it, and
+          the agent is notified — nothing further to press.
+        </p>
+      )}
+
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--error)]">
           {error}
@@ -250,6 +364,7 @@ export default function NewQuotationPage() {
         <QuotationForm
           key={quotationType}
           mode="create"
+          initial={prefill}
           quotationType={quotationType}
           submitting={submitting}
           nextNumber={nextNumber}
@@ -261,5 +376,17 @@ export default function NewQuotationPage() {
         />
       </div>
     </PageContainer>
+  );
+}
+
+/**
+ * useSearchParams needs a Suspense boundary: the page is rendered once on the
+ * server before the query string is known.
+ */
+export default function NewQuotationPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewQuotationPageInner />
+    </Suspense>
   );
 }

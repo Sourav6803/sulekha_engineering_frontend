@@ -65,6 +65,8 @@ export default function ApplicationDetailPage() {
     reviewApplication,
     updateStatus,
     uploadSignedDocument,
+    issueQuotation,
+    issueAgreement,
   } = useApplications();
 
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
@@ -304,11 +306,21 @@ export default function ApplicationDetailPage() {
   );
 
   const handleUploadSignedDocument = useCallback(
-    async (file: File, kind: ApplicationDocumentKind): Promise<string | null> => {
+    async (
+      file: File,
+      kind: ApplicationDocumentKind,
+      meta: { signedOn?: string; note?: string } = {}
+    ): Promise<string | null> => {
       try {
-        await uploadSignedDocument(id, file, kind);
+        await uploadSignedDocument(id, file, kind, meta);
         await reload();
-        toast.success('Signed copy attached');
+        // An agent's scan is not final — say so here, or the toast reads as
+        // "done" and the office's verdict comes as a surprise.
+        toast.success(
+          mode === 'office'
+            ? 'Signed copy attached'
+            : 'Signed scan sent — the office will approve it'
+        );
         return null;
       } catch (err) {
         const details = readApiErrorDetails(err);
@@ -316,7 +328,39 @@ export default function ApplicationDetailPage() {
         return details.message;
       }
     },
-    [id, uploadSignedDocument, reload]
+    [id, uploadSignedDocument, reload, mode]
+  );
+
+  const handleIssueQuotation = useCallback(
+    async (amount?: number): Promise<string | null> => {
+      try {
+        await issueQuotation(id, { amount });
+        await reload();
+        toast.success('Quotation issued — the PDF is on the file and the agent has been told');
+        return null;
+      } catch (err) {
+        const details = readApiErrorDetails(err);
+        toast.error('Could not issue the quotation', { description: details.message });
+        return details.message;
+      }
+    },
+    [id, issueQuotation, reload]
+  );
+
+  const handleIssueAgreement = useCallback(
+    async (amount?: number): Promise<string | null> => {
+      try {
+        await issueAgreement(id, { amount });
+        await reload();
+        toast.success('Agreement issued — the PDF is on the file and the agent has been told');
+        return null;
+      } catch (err) {
+        const details = readApiErrorDetails(err);
+        toast.error('Could not issue the agreement', { description: details.message });
+        return details.message;
+      }
+    },
+    [id, issueAgreement, reload]
   );
 
   const breadcrumbTail = detail?.application.applicationNo ?? 'Application';
@@ -430,6 +474,9 @@ export default function ApplicationDetailPage() {
         onReview={handleReview}
         onUpdateStatus={handleUpdateStatus}
         onUploadSignedDocument={handleUploadSignedDocument}
+        onIssueQuotation={handleIssueQuotation}
+        onIssueAgreement={handleIssueAgreement}
+        onDeleteDocument={handleDelete}
       />
     </PageContainer>
   );
