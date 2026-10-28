@@ -57,7 +57,15 @@ interface FormState {
   phoneNo: string;
   addressLine1: string;
   addressLine2: string;
-  /* The delivery block, which the business sheet prints beside Bill To. */
+  /* The delivery block, which the sheet prints beside Bill To. */
+  /**
+   * Most jobs are delivered to the address being billed, so the form starts with
+   * the delivery block copied from Bill To and only asks for a separate address
+   * when this is off. The server copies the billing address for a blank block
+   * (utils/quotationDefaults.js resolveShipTo), which is what keeps the two
+   * printed columns in step.
+   */
+  shipToSameAsBillTo: boolean;
   shipToName: string;
   shipToAddress: string;
   shipToPhone: string;
@@ -134,6 +142,7 @@ const emptyForm = (
   phoneNo: '',
     addressLine1: '',
     addressLine2: '',
+    shipToSameAsBillTo: true,
     shipToName: '',
     shipToAddress: '',
     shipToPhone: '',
@@ -158,12 +167,45 @@ const emptyForm = (
   notes: '',
 });
 
+/**
+ * The delivery block the server copies from Bill To for a blank one
+ * (backend utils/quotationDefaults.js buildShipToFromBillTo). Kept in step so an
+ * existing quotation reopens with the box ticked only when it really was a copy.
+ */
+const shipToFromBillTo = (source: Pick<
+  QuotationDocument,
+  'customerName' | 'addressLine1' | 'addressLine2' | 'district' | 'pincode' | 'phoneNo'
+>) => ({
+  name: (source.customerName ?? '').trim(),
+  addressLines: [
+    [source.addressLine1, source.addressLine2].map((line) => (line ?? '').trim()).filter(Boolean).join(', '),
+    [source.district, source.pincode].map((line) => (line ?? '').trim()).filter(Boolean).join(', '),
+  ].filter(Boolean),
+  phone: (source.phoneNo ?? '').trim(),
+});
+
+const isShipToCopyOfBillTo = (quotation: QuotationDocument): boolean => {
+  const shipTo = {
+    name: (quotation.shipTo?.name ?? '').trim(),
+    addressLines: (quotation.shipTo?.addressLines ?? []).map((line) => line.trim()).filter(Boolean),
+    phone: (quotation.shipTo?.phone ?? '').trim(),
+  };
+
+  // An older record with no delivery block at all was never separated.
+  if (!shipTo.name && !shipTo.addressLines.length && !shipTo.phone) return true;
+
+  return JSON.stringify(shipTo) === JSON.stringify(shipToFromBillTo(quotation));
+};
+
 const fromQuotation = (quotation: QuotationDocument): FormState => ({
   customerName: quotation.customerName ?? '',
   consumerId: quotation.consumerId ?? '',
   phoneNo: quotation.phoneNo ?? '',
     addressLine1: quotation.addressLine1 ?? '',
     addressLine2: quotation.addressLine2 ?? '',
+    // A saved block that is only the billing address reads as "same as Bill To";
+    // anything else was typed on purpose and must stay separate.
+    shipToSameAsBillTo: isShipToCopyOfBillTo(quotation),
     shipToName: quotation.shipTo?.name ?? '',
     // One line per row, so the printed block keeps the shape it was typed in.
     shipToAddress: (quotation.shipTo?.addressLines ?? []).join('\n'),
@@ -602,14 +644,21 @@ export function QuotationForm({
       phoneNo: form.phoneNo.trim(),
       addressLine1: form.addressLine1.trim(),
       addressLine2: form.addressLine2.trim(),
-      shipTo: {
-        name: form.shipToName.trim(),
-        addressLines: form.shipToAddress
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean),
-        phone: form.shipToPhone.trim(),
-      },
+      /*
+       * A blank block means "same as Bill To": the server copies the billing
+       * address into it (utils/quotationDefaults.js resolveShipTo). Sending the
+       * copy from here would duplicate that rule and let the two drift apart.
+       */
+      shipTo: form.shipToSameAsBillTo
+        ? { name: '', addressLines: [], phone: '' }
+        : {
+            name: form.shipToName.trim(),
+            addressLines: form.shipToAddress
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean),
+            phone: form.shipToPhone.trim(),
+          },
       district: form.district.trim(),
       pincode: form.pincode.trim(),
       /*
@@ -856,11 +905,28 @@ export function QuotationForm({
             />
           </Field>
           {/*
-            The business sheet prints a delivery block beside Bill To. The
-            domestic sheet has the columns but they are always left blank, so the
-            fields are not shown there.
+            The sheet prints a delivery block beside Bill To. Almost every job is
+            delivered to the address being billed, so the block is a copy unless
+            this is unticked — an empty Ship To column beside a full Bill To looks
+            like a mistake on the paper.
           */}
-          {isBusinessSheet && (
+          <label className="flex items-start gap-2 text-sm text-[var(--secondary)] sm:col-span-3">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.shipToSameAsBillTo}
+              onChange={(event) => set('shipToSameAsBillTo', event.target.checked)}
+            />
+            <span>
+              Ship to address is the same as Bill To
+              <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                {form.shipToSameAsBillTo
+                  ? 'The printed Ship To block will carry the billing name, address and phone.'
+                  : 'Fill the delivery address below for a site that differs from the billing address.'}
+              </span>
+            </span>
+          </label>
+          {!form.shipToSameAsBillTo && (
             <Field label="Ship to — name">
               <input
                 className="form-input"
@@ -870,7 +936,7 @@ export function QuotationForm({
               />
             </Field>
           )}
-          {isBusinessSheet && (
+          {!form.shipToSameAsBillTo && (
             <Field label="Ship to — address">
               <textarea
                 className="form-input"
@@ -881,7 +947,7 @@ export function QuotationForm({
               />
             </Field>
           )}
-          {isBusinessSheet && (
+          {!form.shipToSameAsBillTo && (
             <Field label="Ship to — phone">
               <input
                 className="form-input"
