@@ -7,6 +7,13 @@ export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expi
 export type StructureType = 'high_rise' | 'tin_shed' | 'rcc_rooftop' | 'ground_mount';
 
 /**
+ * Which inverter the sheet promises. Printed inside the System Overview sentence
+ * ("... with 3 kw on-grid inverter"), which used to say on-grid unconditionally.
+ * Mirrors the backend SYSTEM_TYPES enum; the form defaults to on-grid.
+ */
+export type SystemType = 'ongrid' | 'offgrid' | 'hybrid';
+
+/**
  * Which sheet a quotation is.
  *
  * `consumer` — the domestic PM Surya Ghar quotation. Every household quotation
@@ -133,10 +140,11 @@ export interface QuotationDocument extends BaseDocument {
   panelQty?: number | null;
   panelBrand?: string;
   inverterCapacityKW?: number | null;
-  inverterBrand?: string;
-  structureType?: StructureType;
-  systemOverview?: string;
-  items: QuotationItem[];
+   inverterBrand?: string;
+   systemType?: SystemType;
+   structureType?: StructureType;
+   systemOverview?: string;
+   items: QuotationItem[];
   amount?: number | null;
   amountIncludesGST?: boolean;
   amountInWords?: string;
@@ -406,10 +414,11 @@ export interface QuotationPayload {
   panelQty?: number | null;
   panelBrand?: string;
   inverterCapacityKW?: number | null;
-  inverterBrand?: string;
-  structureType?: StructureType;
-  systemOverview?: string;
-  items?: QuotationItem[];
+   inverterBrand?: string;
+   systemType?: SystemType;
+   structureType?: StructureType;
+   systemOverview?: string;
+   items?: QuotationItem[];
   amount?: number | null;
   amountIncludesGST?: boolean;
   amountInWords?: string;

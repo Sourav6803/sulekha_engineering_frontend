@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Loader2, Plus, RotateCcw, X } from 'lucide-react';
 import { BOQItemsEditor } from './BOQItemsEditor';
 import { buildTemplateItems } from './boqTemplate';
-import { STRUCTURE_OPTIONS, formatDocumentAmount } from './quotationDisplay';
+import { STRUCTURE_OPTIONS, SYSTEM_TYPE_OPTIONS, formatDocumentAmount } from './quotationDisplay';
 import { formatINR } from '@/lib/format';
 import type {
   QuotationDefaults,
@@ -16,6 +16,7 @@ import type {
   QuotationStatus,
   QuotationType,
   StructureType,
+  SystemType,
 } from '@/types/quotation';
 
 /** Mirrors parseQuotationNo on the server: PREFIX/SCHEME/FY/SEQUENCE. */
@@ -68,6 +69,11 @@ interface FormState {
   panelBrand: string;
   inverterCapacityKW: string;
   inverterBrand: string;
+  /**
+   * Which inverter the sheet promises. Printed into the System Overview sentence
+   * by the server, so it is the only place that wording is decided.
+   */
+  systemType: SystemType;
   structureType: StructureType;
   schemeCode: string;
   issueDate: string;
@@ -139,6 +145,9 @@ const emptyForm = (
   panelBrand: 'Waaree/Adani',
   inverterCapacityKW: '',
   inverterBrand: 'Deye/any',
+  // Almost every PM Surya Ghar rooftop is on-grid; off-grid and hybrid are the
+  // exceptions this field exists for.
+  systemType: 'ongrid',
   structureType: 'high_rise',
   schemeCode: 'PMSGY',
   issueDate: todayInput(),
@@ -167,6 +176,9 @@ const fromQuotation = (quotation: QuotationDocument): FormState => ({
   panelBrand: quotation.panelBrand ?? '',
   inverterCapacityKW: quotation.inverterCapacityKW != null ? String(quotation.inverterCapacityKW) : '',
   inverterBrand: quotation.inverterBrand ?? '',
+  // Records issued before the field existed have no value; they were all printed
+  // as on-grid, which is also the server's default.
+  systemType: quotation.systemType ?? 'ongrid',
   structureType: quotation.structureType ?? 'high_rise',
   schemeCode: quotation.schemeCode ?? 'PMSGY',
   issueDate: toDateInput(quotation.issueDate) || todayInput(),
@@ -615,6 +627,7 @@ export function QuotationForm({
           ? Number(form.systemSizeKW)
           : null,
       inverterBrand: form.inverterBrand.trim(),
+      systemType: form.systemType,
       structureType: form.structureType,
       issueDate: form.issueDate || undefined,
       validityDays: form.validityDays ? Number(form.validityDays) : undefined,
@@ -980,7 +993,26 @@ export function QuotationForm({
               placeholder="Deye/any"
             />
           </Field>
-          <Field label="Mounting structure" className="sm:col-span-3">
+          <Field label="Inverter type">
+            <select
+              className="form-input"
+              value={form.systemType}
+              onChange={(event) => set('systemType', event.target.value as SystemType)}
+            >
+              {SYSTEM_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Printed in the system overview: &ldquo;{form.inverterCapacityKW || form.systemSizeKW || '3'} kw{' '}
+              {(SYSTEM_TYPE_OPTIONS.find((option) => option.value === form.systemType) ?? SYSTEM_TYPE_OPTIONS[0])
+                .label.toLowerCase()}{' '}
+              inverter&rdquo;
+            </p>
+          </Field>
+          <Field label="Mounting structure" className="sm:col-span-2">
             <select
               className="form-input"
               value={form.structureType}

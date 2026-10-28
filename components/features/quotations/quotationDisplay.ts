@@ -1,4 +1,25 @@
-import type { StructureType } from '@/types/quotation';
+import type { StructureType, SystemType } from '@/types/quotation';
+
+/**
+ * Which inverter the sheet promises. Mirrors the backend SYSTEM_TYPES enum — the
+ * value fills {{systemType}} in the System Overview sentence, so the wording here
+ * is what the consumer reads: "3 kw on-grid inverter".
+ */
+export const SYSTEM_TYPE_LABEL: Record<SystemType, string> = {
+  ongrid: 'On-grid',
+  offgrid: 'Off-grid',
+  hybrid: 'Hybrid',
+};
+
+/** The dropdown in the System section, common case first. */
+export const SYSTEM_TYPE_OPTIONS: Array<{ value: SystemType; label: string }> = [
+  { value: 'ongrid', label: SYSTEM_TYPE_LABEL.ongrid },
+  { value: 'offgrid', label: SYSTEM_TYPE_LABEL.offgrid },
+  { value: 'hybrid', label: SYSTEM_TYPE_LABEL.hybrid },
+];
+
+export const systemTypeLabel = (value?: SystemType | null): string =>
+  value ? SYSTEM_TYPE_LABEL[value] ?? value : SYSTEM_TYPE_LABEL.ongrid;
 
 /** Mounting structure labels. Mirrors the backend STRUCTURE_TYPES enum. */
 export const STRUCTURE_LABEL: Record<StructureType, string> = {

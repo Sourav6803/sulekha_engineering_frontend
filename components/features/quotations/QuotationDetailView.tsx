@@ -6,7 +6,7 @@ import { Download, FileText, Loader2, Pencil, Printer, Trash2, Upload } from 'lu
 import { toast } from 'sonner';
 import { QuotationStatusBadge } from './QuotationStatusBadge';
 import { QuotationPreviewFrame } from './QuotationPreviewFrame';
-import { formatDocumentAmount, structureLabel } from './quotationDisplay';
+import { formatDocumentAmount, structureLabel, systemTypeLabel } from './quotationDisplay';
 import { quotationsApi } from '@/lib/api/quotations.api';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { handleApiError } from '@/lib/errors/handleApiError';
@@ -204,6 +204,7 @@ export function QuotationDetailView({
             value={quotation.panelQty ? `${quotation.panelQty} × ${quotation.panelWp ?? '—'} Wp` : '—'}
           />
           <InfoRow label="Inverter" value={quotation.inverterCapacityKW ? `${quotation.inverterCapacityKW} kW` : '—'} />
+          <InfoRow label="Inverter type" value={systemTypeLabel(quotation.systemType)} />
           <InfoRow label="Structure" value={structureLabel(quotation.structureType)} />
         </div>
 
