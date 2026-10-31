@@ -18,7 +18,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
   const company = home?.company ?? null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--background)]">
+    <div className="site-theme flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
       <SiteHeader phone={company?.phone ?? null} />
       <main className="flex-1">{children}</main>
       {company && <SiteFooter company={company} />}

@@ -35,9 +35,12 @@ import {
 } from './wizard/wizardTypes';
 import { useApplications } from '@/hooks/useApplications';
 import { readApiErrorDetails } from '@/lib/errors/apiErrorDetails';
+import { filesFromCustomerDocuments } from './documentExtras';
+import { customersApi } from '@/lib/api/customers.api';
 import type {
   ApplicationChecklist,
   ApplicationDocument,
+  ApplicationDocumentFile,
   ApplicationDocumentKind,
   ApplicationNameMatch,
   ApplicationSubmitIssue,
@@ -140,6 +143,65 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
   const [leaveOpen, setLeaveOpen] = useState(false);
 
   const applicationId = application?._id ?? null;
+
+  // ------------------------------------------------------------ customer papers
+  /**
+   * The customer an application is filed from still holds the bank details and
+   * the passbook scan collected in the field. The application record carries
+   * only name / phone / customerId, so step 3 read nothing and showed four blank
+   * boxes and no file for a customer whose papers were already on record. The
+   * customer is read once here and passed down as a seed.
+   */
+  const customerRef = application?.customer;
+  const customerRecordId = typeof customerRef === 'string' ? customerRef : (customerRef?._id ?? null);
+
+  /**
+   * One piece of state, tagged with the customer it was read from: switching to
+   * another customer's application ignores the older response instead of showing
+   * the previous bank account. Kept as a single object so the effect writes only
+   * from the async callback and never synchronously in its body.
+   */
+  const [customerSeed, setCustomerSeed] = useState<{
+    id: string;
+    bank: DocumentExtrasForm;
+    files: ApplicationDocumentFile[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (!customerRecordId) return;
+
+    let active = true;
+    void customersApi
+      .get(customerRecordId)
+      .then((response) => {
+        if (!active) return;
+        const record = response.data;
+        if (!record) return;
+
+        setCustomerSeed({
+          id: customerRecordId,
+          bank: {
+            accountNumber: record.bank?.accountNumber ?? '',
+            ifsc: record.bank?.ifsc ?? '',
+            branchName: record.bank?.branch ?? '',
+            accountType: '',
+          },
+          files: filesFromCustomerDocuments(record.documents),
+        });
+      })
+      .catch(() => {
+        /* Unreadable customer: the card simply starts empty, and the office can
+           still type the details and upload the paper. */
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customerRecordId]);
+
+  const seedMatches = customerSeed != null && customerSeed.id === customerRecordId;
+  const customerBank = seedMatches ? customerSeed.bank : null;
+  const customerFiles = seedMatches ? customerSeed.files : [];
 
   // ---------------------------------------------------------------- checklist
   useEffect(() => {
@@ -836,6 +898,8 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
               checklistLoading={checklistLoading}
               checklistError={checklistError}
               application={application}
+              bankDefaults={customerBank}
+              customerFiles={customerFiles}
               disabled={false}
               onUpload={handleUpload}
               onDelete={handleDeleteDocument}

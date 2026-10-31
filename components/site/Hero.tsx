@@ -60,69 +60,17 @@ export default function Hero({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(1100px 520px at 12% -10%, rgba(52,196,107,0.20), transparent 60%), radial-gradient(900px 460px at 92% 8%, rgba(201,138,8,0.14), transparent 62%)',
+            'radial-gradient(1000px 520px at 10% -12%, rgba(57,118,82,0.16), transparent 62%), radial-gradient(880px 460px at 94% 4%, rgba(233,185,77,0.16), transparent 64%)',
         }}
       />
 
       {/*
-       * Campaign artwork sits above the headline rather than inside the portrait
-       * card: these banners are printed 3:1 for WhatsApp and hoardings, and
-       * cropping one into a 4:3.4 frame cuts the Bengali headline in half. The
-       * illustration in the card below stays put, so the page never depends on
-       * whether the office has uploaded artwork this week.
+       * Headline first, campaign artwork after it. The banner used to sit above
+       * the copy and filled the whole first screen on a laptop, so the message
+       * and both calls to action started below the fold. It now runs as a strip
+       * under the hero — still the first thing you meet when you scroll, and the
+       * 3:1 artwork is never cropped into a portrait frame.
        */}
-      {banners.length > 0 && (
-        <div className="relative mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.5rem] bg-white ring-1 ring-[var(--border-soft)] sm:aspect-[3/1]">
-            {banners.map((banner, slideIndex) => (
-              <Image
-                key={banner.id}
-                src={banner.imageUrl}
-                alt={banner.altText || 'Sulekha Engineering scheme banner'}
-                fill
-                priority={slideIndex === 0}
-                sizes="(max-width: 1024px) 100vw, 1216px"
-                /* Contain, not cover: the artwork is 3:1 and carries the phone
-                   numbers and the address along its edges. Cropping it to a phone
-                   screen cut both ends off, so on a narrow screen the banner is
-                   letterboxed instead. At >=640px the box is already 3:1, so this
-                   makes no difference there. */
-                className={`object-contain transition-opacity duration-700 ${
-                  slideIndex === index ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
-            ))}
-
-            {/* The artwork carries its own CTA ("ফ্রি সার্ভে", "যোগাযোগ করুন"), so
-                the slide links where the record says. Below the dots in the stack,
-                which stay clickable. */}
-            {banners[index]?.linkUrl && (
-              <Link
-                href={banners[index].linkUrl as string}
-                aria-label={banners[index].ctaLabel || banners[index].title}
-                className="absolute inset-0 z-10"
-              />
-            )}
-
-            {banners.length > 1 && (
-              <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
-                {banners.map((banner, slideIndex) => (
-                  <button
-                    key={banner.id}
-                    type="button"
-                    onClick={() => setIndex(slideIndex)}
-                    aria-label={`Show banner ${slideIndex + 1}`}
-                    className={`h-1.5 rounded-full transition-all ${
-                      slideIndex === index ? 'w-6 bg-white shadow' : 'w-1.5 bg-white/60 hover:bg-white'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-16">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--primary-soft)] bg-white/80 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary-active)] backdrop-blur">
@@ -188,7 +136,7 @@ export default function Hero({
         </div>
 
         <div className="relative">
-          <div className="relative aspect-[4/3.4] w-full overflow-hidden rounded-[2rem] bg-[var(--primary-tint)] shadow-[var(--shadow)] ring-1 ring-black/5">
+          <div className="relative aspect-[4/3.4] w-full overflow-hidden rounded-[7rem_2rem_2rem_2rem] bg-[var(--primary-tint)] shadow-[var(--shadow)] ring-1 ring-black/5">
             <Image
               src={FALLBACK_IMAGE}
               alt={FALLBACK_ALT}
@@ -233,6 +181,58 @@ export default function Hero({
           </div>
         </div>
       </div>
+      {banners.length > 0 && (
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-2 sm:px-6 lg:px-8 lg:pb-20">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.5rem] bg-white ring-1 ring-[var(--border-soft)] sm:aspect-[3/1]">
+            {banners.map((banner, slideIndex) => (
+              <Image
+                key={banner.id}
+                src={banner.imageUrl}
+                alt={banner.altText || 'Sulekha Engineering scheme banner'}
+                fill
+                priority={slideIndex === 0}
+                sizes="(max-width: 1024px) 100vw, 1216px"
+                /* Contain, not cover: the artwork is 3:1 and carries the phone
+                   numbers and the address along its edges. Cropping it to a phone
+                   screen cut both ends off, so on a narrow screen the banner is
+                   letterboxed instead. At >=640px the box is already 3:1, so this
+                   makes no difference there. */
+                className={`object-contain transition-opacity duration-700 ${
+                  slideIndex === index ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            ))}
+
+            {/* The artwork carries its own CTA ("ফ্রি সার্ভে", "যোগাযোগ করুন"), so
+                the slide links where the record says. Below the dots in the stack,
+                which stay clickable. */}
+            {banners[index]?.linkUrl && (
+              <Link
+                href={banners[index].linkUrl as string}
+                aria-label={banners[index].ctaLabel || banners[index].title}
+                className="absolute inset-0 z-10"
+              />
+            )}
+
+            {banners.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
+                {banners.map((banner, slideIndex) => (
+                  <button
+                    key={banner.id}
+                    type="button"
+                    onClick={() => setIndex(slideIndex)}
+                    aria-label={`Show banner ${slideIndex + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      slideIndex === index ? 'w-6 bg-white shadow' : 'w-1.5 bg-white/60 hover:bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

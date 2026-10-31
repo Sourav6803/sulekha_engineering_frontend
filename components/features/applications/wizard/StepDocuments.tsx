@@ -13,7 +13,7 @@ import type {
   ApplicationDocumentKind,
 } from '@/types/application';
 
-import { extrasFromDocument, extrasSeedKey, latestDocument } from '../documentExtras';
+import { extrasSeedKey, latestDocument, seedExtras } from '../documentExtras';
 import type { DocumentExtrasForm } from '../documentExtras';
 
 export type { DocumentExtrasForm };
@@ -32,6 +32,14 @@ interface StepDocumentsProps {
   checklistError: string | null;
   application: ApplicationDocument | null;
   disabled?: boolean;
+  /**
+   * The bank details already typed against the customer. Seeds the passbook
+   * card before this application has an upload of its own, so the office does
+   * not have to re-read a passbook it captured last week.
+   */
+  bankDefaults?: DocumentExtrasForm | null;
+  /** Papers already on the customer record — shown as a reference, not as this application's upload. */
+  customerFiles?: ApplicationDocumentFile[];
   /** Resolve with null on success, or the server's own message on failure. */
   onUpload: (kind: ApplicationDocumentKind, file: File, extras: DocumentExtrasForm) => Promise<string | null>;
   onDelete: (documentId: string) => Promise<string | null>;
@@ -48,12 +56,16 @@ interface StepDocumentsProps {
 function DocumentCard({
   document: documentMeta,
   files,
+  customerFiles,
+  bankDefaults,
   disabled,
   onUpload,
   onDelete,
 }: {
   document: ApplicationChecklistDocument;
   files: ApplicationDocumentFile[];
+  customerFiles: ApplicationDocumentFile[];
+  bankDefaults?: DocumentExtrasForm | null;
   disabled?: boolean;
   onUpload: StepDocumentsProps['onUpload'];
   onDelete: StepDocumentsProps['onDelete'];
@@ -80,8 +92,14 @@ function DocumentCard({
    * Seeded from the file on record, so the boxes show the bank details already
    * captured rather than four empty fields. The card is keyed on the document
    * it was seeded from (see the parent), which re-seeds it after a replacement.
+   *
+   * Before the first upload there is no application document to seed from — the
+   * passbook was scanned when the customer was collected — so the customer's
+   * bank block fills the gaps.
    */
-  const [extras, setExtras] = useState<DocumentExtrasForm>(() => extrasFromDocument(latestDocument(files)));
+  const [extras, setExtras] = useState<DocumentExtrasForm>(() =>
+    seedExtras(latestDocument(files), bankDefaults)
+  );
 
   const extrasKeys = documentMeta.extras ?? [];
   const needsBankFields = extrasKeys.length > 0;
@@ -252,6 +270,37 @@ function DocumentCard({
         </ul>
       )}
 
+      {/*
+       * The copy captured with the customer, when this application has none of
+       * its own. It is a reference, not this application's document: it cannot
+       * be removed here, and it does not count towards the checklist.
+       */}
+      {files.length === 0 && customerFiles.length > 0 && (
+        <div className="mt-3 rounded-[1rem] border border-dashed border-[var(--border)] bg-white/70 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-soft)]">
+            Already on the customer record
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {customerFiles.map((entry) => (
+              <li key={entry._id} className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="min-w-0 truncate text-[var(--foreground)]">{entry.fileName || 'Uploaded file'}</span>
+                <a
+                  href={entry.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 font-semibold text-[var(--primary-active)] hover:underline"
+                >
+                  View
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] leading-4 text-[var(--muted)]">
+            Uploaded when the customer was created. Upload a copy here to attach it to this application.
+          </p>
+        </div>
+      )}
+
       {/* Bank details ride with the passbook / cheque upload */}
       {needsBankFields && (
         <div className="mt-3 grid gap-3 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 sm:grid-cols-2">
@@ -359,6 +408,8 @@ export function StepDocuments({
   checklistLoading,
   checklistError,
   application,
+  bankDefaults,
+  customerFiles,
   disabled,
   onUpload,
   onDelete,
@@ -419,12 +470,15 @@ export function StepDocuments({
       <div className="grid gap-3 lg:grid-cols-2">
         {documents.map((documentMeta) => {
           const kindFiles = files.filter((entry) => entry.kind === documentMeta.kind);
+          const kindCustomerFiles = (customerFiles ?? []).filter((entry) => entry.kind === documentMeta.kind);
 
           return (
             <DocumentCard
               key={`${documentMeta.kind}:${extrasSeedKey(kindFiles)}`}
               document={documentMeta}
               files={kindFiles}
+              customerFiles={kindCustomerFiles}
+              bankDefaults={bankDefaults}
               disabled={disabled}
               onUpload={onUpload}
               onDelete={onDelete}

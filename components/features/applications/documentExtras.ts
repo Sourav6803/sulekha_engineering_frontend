@@ -1,4 +1,5 @@
 import type { ApplicationAccountType, ApplicationDocumentFile } from '@/types/application';
+import type { CustomerDocument } from '@/types/customer';
 
 /**
  * The optional fields a document carries alongside its file.
@@ -147,4 +148,67 @@ export function latestDocument(files: ApplicationDocumentFile[]): ApplicationDoc
  */
 export function extrasSeedKey(files: ApplicationDocumentFile[]): string {
   return latestDocument(files)?._id ?? 'none';
+}
+
+/**
+ * Extras for a card that has no upload of its own yet.
+ *
+ * A customer is collected — and their bank papers scanned — before the office
+ * opens an application for them. The bank boxes on the document card used to
+ * seed only from the application's own upload, so a customer whose passbook was
+ * already on file still showed four blank fields, which reads as "nothing was
+ * captured". Everything the application holds wins; the customer record only
+ * fills the gaps.
+ */
+export function seedExtras(
+  file: ApplicationDocumentFile | null | undefined,
+  fallback?: DocumentExtrasForm | null
+): DocumentExtrasForm {
+  const fromFile = extrasFromDocument(file);
+  if (!fallback) return fromFile;
+
+  return {
+    accountNumber: fromFile.accountNumber || fallback.accountNumber,
+    ifsc: fromFile.ifsc || fallback.ifsc,
+    branchName: fromFile.branchName || fallback.branchName,
+    accountType: fromFile.accountType || fallback.accountType,
+  };
+}
+
+/**
+ * Papers already uploaded against the customer, shaped like application files.
+ *
+ * The two models name the same paper differently in one place — `aadhar` on the
+ * customer, `aadhaar` on the application — so the mapping is written out rather
+ * than cast, and a customer-only type (a voter card, a caste certificate) is
+ * skipped instead of leaking into a checklist card that has no place for it.
+ */
+const CUSTOMER_TO_APPLICATION_KIND: Record<string, ApplicationDocumentFile['kind']> = {
+  aadhar: 'aadhaar',
+  panCard: 'panCard',
+  electricBill: 'electricBill',
+  landRecord: 'landRecord',
+  passbookOrCheque: 'passbookOrCheque',
+  sitePhotoBefore: 'rooftopPhoto',
+};
+
+export function filesFromCustomerDocuments(documents?: CustomerDocument[] | null): ApplicationDocumentFile[] {
+  if (!documents?.length) return [];
+
+  const files: ApplicationDocumentFile[] = [];
+  for (const document of documents) {
+    const kind = CUSTOMER_TO_APPLICATION_KIND[document.type];
+    if (!kind || !document.url) continue;
+
+    files.push({
+      _id: document._id,
+      kind,
+      url: document.url,
+      fileName: document.fileName,
+      fileSize: document.fileSize,
+      mimeType: document.fileType,
+      uploadedAt: document.uploadedAt,
+    });
+  }
+  return files;
 }

@@ -173,6 +173,49 @@
   --font-mono: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
 }
 
+/* ============================================================
+   Public site palette — forest, warm ivory, solar gold.
+   Scoped with .site-theme (applied in the (site) layout) so the
+   staff dashboard keeps its brighter product green.
+   ============================================================ */
+.site-theme {
+  --background: #FAF9F3;
+  --surface: #FFFEF9;
+  --surface-muted: #EEF3E9;
+  --surface-strong: #E3ECDB;
+  --surface-glass: rgba(255, 254, 249, 0.80);
+
+  --foreground: #123C30;
+  --muted: #5F7065;
+  --muted-soft: #8A9A86;
+
+  --border: #DDE5D4;
+  --border-soft: #E8EEE0;
+
+  --primary: #114B38;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #1E6047;
+  --primary-active: #0C3A2B;
+  --primary-pressed: #092C21;
+  --primary-tint: #EAF1E3;
+  --primary-soft: #C3D8B8;
+  --primary-bright: #397652;
+  --secondary: #3F7A5F;
+
+  --accent: #A87C1B;
+  --accent-tint: #F8EDCE;
+
+  --gradient-leaf: linear-gradient(135deg, #2E7C5B 0%, #114B38 55%, #0A2F23 100%);
+
+  --shadow-xs: 0 1px 2px rgba(18, 60, 48, 0.05);
+  --shadow-sm: 0 4px 14px rgba(18, 60, 48, 0.07);
+  --shadow: 0 18px 50px rgba(18, 60, 48, 0.12);
+  --shadow-lg: 0 26px 70px rgba(18, 60, 48, 0.16);
+  --shadow-card: 0 1px 2px rgba(18, 60, 48, 0.04), 0 8px 26px -14px rgba(18, 60, 48, 0.26);
+  --shadow-card-hover: 0 2px 4px rgba(18, 60, 48, 0.05), 0 16px 36px -16px rgba(18, 60, 48, 0.30);
+  --shadow-glow: 0 0 0 1px rgba(17, 75, 56, 0.14), 0 10px 28px rgba(17, 75, 56, 0.22);
+}
+
 @layer base {
   * {
     box-sizing: border-box;
