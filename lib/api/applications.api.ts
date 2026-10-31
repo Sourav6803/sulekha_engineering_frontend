@@ -137,6 +137,7 @@ export const applicationsApi = {
     const body = new FormData();
     body.append('file', file);
     body.append('kind', fields.kind);
+    if (fields.accountHolderName) body.append('accountHolderName', fields.accountHolderName);
     if (fields.accountNumber) body.append('accountNumber', fields.accountNumber);
     if (fields.ifsc) body.append('ifsc', fields.ifsc);
     if (fields.branchName) body.append('branchName', fields.branchName);

@@ -181,6 +181,7 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
         setCustomerSeed({
           id: customerRecordId,
           bank: {
+            accountHolderName: record.bank?.accountHolderName ?? '',
             accountNumber: record.bank?.accountNumber ?? '',
             ifsc: record.bank?.ifsc ?? '',
             branchName: record.bank?.branch ?? '',
@@ -542,6 +543,7 @@ export function ApplicationWizard({ initialApplicationId }: { initialApplication
       try {
         await uploadDocument(applicationId, file, {
           kind,
+          accountHolderName: extras.accountHolderName.trim() || undefined,
           accountNumber: extras.accountNumber.trim() || undefined,
           ifsc: extras.ifsc.trim() || undefined,
           branchName: extras.branchName.trim() || undefined,

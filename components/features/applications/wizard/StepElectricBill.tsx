@@ -59,7 +59,7 @@ export function StepElectricBill({
       const failure = await onUpload(
         'electricBill',
         file,
-        { accountNumber: '', ifsc: '', branchName: '', accountType: '' }
+        { accountHolderName: '', accountNumber: '', ifsc: '', branchName: '', accountType: '' }
       );
       if (failure) {
         setActionError(failure);

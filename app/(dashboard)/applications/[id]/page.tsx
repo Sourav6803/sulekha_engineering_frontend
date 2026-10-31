@@ -162,6 +162,7 @@ export default function ApplicationDetailPage() {
   const uploadFields = useCallback(
     (kind: ApplicationDocumentKind, extras: DocumentExtrasForm) => ({
       kind,
+      accountHolderName: extras.accountHolderName.trim() || undefined,
       accountNumber: extras.accountNumber.trim() || undefined,
       ifsc: extras.ifsc.trim() || undefined,
       branchName: extras.branchName.trim() || undefined,

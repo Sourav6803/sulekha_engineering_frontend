@@ -101,8 +101,18 @@ function DocumentCard({
     seedExtras(latestDocument(files), bankDefaults)
   );
 
+  /**
+   * The bank fields this card always offers.
+   *
+   * The checklist names them, but a passbook card that lists none — an older or
+   * trimmed checklist payload — used to render no form at all, which reads as
+   * "the bank details box is gone". For the passbook the full set is the
+   * default; the server list only narrows it for anything else.
+   */
+  const BANK_FIELD_KEYS = ['accountHolderName', 'accountNumber', 'ifsc', 'branchName', 'accountType'];
   const extrasKeys = documentMeta.extras ?? [];
-  const needsBankFields = extrasKeys.length > 0;
+  const bankFields: string[] = documentMeta.kind === 'passbookOrCheque' ? BANK_FIELD_KEYS : extrasKeys;
+  const needsBankFields = bankFields.length > 0;
 
   const rejected = files.find((entry) => entry.review?.status === 'rejected');
   const state: 'missing' | 'uploaded' | 'rejected' = rejected
@@ -304,7 +314,18 @@ function DocumentCard({
       {/* Bank details ride with the passbook / cheque upload */}
       {needsBankFields && (
         <div className="mt-3 grid gap-3 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 sm:grid-cols-2">
-          {extrasKeys.includes('accountNumber') && (
+          {bankFields.includes('accountHolderName') && (
+            <TextField
+              id={`${documentMeta.kind}-accountHolderName`}
+              label="Account holder name"
+              value={extras.accountHolderName}
+              onValueChange={(value) => setExtras((prev) => ({ ...prev, accountHolderName: value }))}
+              error={undefined}
+              disabled={disabled}
+              compact
+            />
+          )}
+          {bankFields.includes('accountNumber') && (
             <TextField
               id={`${documentMeta.kind}-accountNumber`}
               label="Account number"
@@ -316,7 +337,7 @@ function DocumentCard({
               compact
             />
           )}
-          {extrasKeys.includes('ifsc') && (
+          {bankFields.includes('ifsc') && (
             <TextField
               id={`${documentMeta.kind}-ifsc`}
               label="IFSC"
@@ -328,7 +349,7 @@ function DocumentCard({
               compact
             />
           )}
-          {extrasKeys.includes('branchName') && (
+          {bankFields.includes('branchName') && (
             <TextField
               id={`${documentMeta.kind}-branch`}
               label="Branch name"
@@ -339,7 +360,7 @@ function DocumentCard({
               compact
             />
           )}
-          {extrasKeys.includes('accountType') && (
+          {bankFields.includes('accountType') && (
             <SelectField
               id={`${documentMeta.kind}-accountType`}
               label="Account type"

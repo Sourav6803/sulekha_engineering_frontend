@@ -8,6 +8,8 @@ import type { CustomerDocument } from '@/types/customer';
  * needs before it can raise a subsidy claim.
  */
 export interface DocumentExtrasForm {
+  /** The name printed on the passbook — it must match the Aadhaar and the bill. */
+  accountHolderName: string;
   accountNumber: string;
   ifsc: string;
   branchName: string;
@@ -15,6 +17,7 @@ export interface DocumentExtrasForm {
 }
 
 export const EMPTY_EXTRAS: DocumentExtrasForm = {
+  accountHolderName: '',
   accountNumber: '',
   ifsc: '',
   branchName: '',
@@ -36,6 +39,7 @@ export function extrasFromDocument(file?: ApplicationDocumentFile | null): Docum
   if (!extras) return { ...EMPTY_EXTRAS };
 
   return {
+    accountHolderName: extras.accountHolderName ?? '',
     accountNumber: extras.accountNumber ?? '',
     ifsc: extras.ifsc ?? '',
     branchName: extras.branchName ?? '',
@@ -168,6 +172,7 @@ export function seedExtras(
   if (!fallback) return fromFile;
 
   return {
+    accountHolderName: fromFile.accountHolderName || fallback.accountHolderName,
     accountNumber: fromFile.accountNumber || fallback.accountNumber,
     ifsc: fromFile.ifsc || fallback.ifsc,
     branchName: fromFile.branchName || fallback.branchName,

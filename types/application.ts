@@ -186,6 +186,7 @@ export interface ApplicationDocumentFile {
 }
 
 export interface ApplicationDocumentExtras {
+  accountHolderName?: string | null;
   accountNumber?: string | null;
   ifsc?: string | null;
   branchName?: string | null;
@@ -415,6 +416,7 @@ export interface ApplicationNameMatchInput {
 /** The non-file fields of POST /applications/:id/documents. */
 export interface ApplicationDocumentUploadFields {
   kind: ApplicationDocumentKind;
+  accountHolderName?: string;
   accountNumber?: string;
   ifsc?: string;
   branchName?: string;

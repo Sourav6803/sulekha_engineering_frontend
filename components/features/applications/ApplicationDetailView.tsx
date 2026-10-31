@@ -232,6 +232,7 @@ export function ApplicationDetailView({
           documentEditable
             ? (file) =>
                 onUpload('electricBill', file, {
+                  accountHolderName: '',
                   accountNumber: '',
                   ifsc: '',
                   branchName: '',
@@ -261,7 +262,7 @@ export function ApplicationDetailView({
           checklist={checklist}
           files={application.documents ?? []}
           onUpload={(file, kind) =>
-            onUpload(kind, file, { accountNumber: '', ifsc: '', branchName: '', accountType: '' })
+            onUpload(kind, file, { accountHolderName: '', accountNumber: '', ifsc: '', branchName: '', accountType: '' })
           }
           onRemove={onDeleteDocument}
         />

@@ -380,7 +380,10 @@ function DocumentCard({
    */
   const [extras, setExtras] = useState<DocumentExtrasForm>(() => extrasFromDocument(latestDocument(files)));
 
+  /** Same fallback as the wizard: the passbook card always offers the full bank form. */
+  const BANK_FIELD_KEYS = ['accountHolderName', 'accountNumber', 'ifsc', 'branchName', 'accountType'];
   const extrasKeys = meta.extras ?? [];
+  const bankFields: string[] = meta.kind === 'passbookOrCheque' ? BANK_FIELD_KEYS : extrasKeys;
   const office = mode === 'office';
 
   const pick = (replaceId: string | null) => {
@@ -483,7 +486,7 @@ function DocumentCard({
       {/* The bank extras are consumer data: only the field agent's editable form
           can touch them, so office mode shows nothing here (the row above already
           prints the recorded values). */}
-      {!office && extrasKeys.length > 0 && (
+      {!office && bankFields.length > 0 && (
         <div className="mt-3 rounded-[1rem] border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3">
           <p className="mb-2 text-[11px] leading-4 text-[var(--muted)]">
             {files.length > 0
@@ -491,7 +494,17 @@ function DocumentCard({
               : 'Bank details for this document. They are stored with the file when you upload it.'}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {extrasKeys.includes('accountNumber') && (
+            {bankFields.includes('accountHolderName') && (
+              <TextField
+                id={`detail-${meta.kind}-accountHolderName`}
+                label="Account holder name"
+                value={extras.accountHolderName}
+                onValueChange={(value) => setExtras((prev) => ({ ...prev, accountHolderName: value }))}
+                disabled={disabled}
+                compact
+              />
+            )}
+            {bankFields.includes('accountNumber') && (
               <TextField
                 id={`detail-${meta.kind}-accountNumber`}
                 label="Account number"
@@ -502,7 +515,7 @@ function DocumentCard({
                 compact
               />
             )}
-            {extrasKeys.includes('ifsc') && (
+            {bankFields.includes('ifsc') && (
               <TextField
                 id={`detail-${meta.kind}-ifsc`}
                 label="IFSC"
@@ -513,7 +526,7 @@ function DocumentCard({
                 compact
               />
             )}
-            {extrasKeys.includes('branchName') && (
+            {bankFields.includes('branchName') && (
               <TextField
                 id={`detail-${meta.kind}-branch`}
                 label="Branch name"
@@ -523,7 +536,7 @@ function DocumentCard({
                 compact
               />
             )}
-            {extrasKeys.includes('accountType') && (
+            {bankFields.includes('accountType') && (
               <SelectField
                 id={`detail-${meta.kind}-accountType`}
                 label="Account type"
