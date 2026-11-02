@@ -54,9 +54,19 @@ export type SiteBrand = {
   installedKW: number;
 };
 
+export type SiteMaterialItem = {
+  name: string;
+  /** Size or rating exactly as written on the BOM, e.g. `2060 mm`, `4 sq mm`. */
+  spec?: string;
+  /** Unit as written on the BOM. The quantities are blank on the sheet, so this is usually `nos`. */
+  quantity?: string;
+  role?: string;
+  note?: string;
+};
+
 export type SiteMaterialGroup = {
   group: string;
-  items: { name: string; role: string; note: string }[];
+  items: SiteMaterialItem[];
 };
 
 export type ProcessStep = {
