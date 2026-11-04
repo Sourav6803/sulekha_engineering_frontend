@@ -14,6 +14,8 @@ import PmSchemeBanner from '@/components/site/PmSchemeBanner';
 import MaterialsSection from '@/components/site/MaterialsSection';
 import FaqSection from '@/components/site/FaqSection';
 import ContactSection from '@/components/site/ContactSection';
+import JsonLd from '@/components/site/JsonLd';
+import { graph, localBusinessSchema, serviceSchema, websiteSchema } from '@/lib/site/seo';
 import { getHomeCached } from '@/lib/site/server-data';
 
 /**
@@ -81,8 +83,26 @@ export default async function HomePage() {
 
   const districts = home.districts.map((row) => row.district);
 
+  /**
+   * Business, site and service in one connected graph. The districts come from
+   * the same payload the page renders, so the schema's service area can never
+   * drift away from the list a visitor actually reads.
+   */
+  const homeSchema = graph(
+    localBusinessSchema(),
+    websiteSchema(),
+    serviceSchema({
+      name: 'Rooftop solar installation in West Bengal',
+      description:
+        'Grid-tied rooftop solar for homes across Purba Bardhaman, Hooghly, Bankura, Birbhum and Purba Medinipur: free survey, subsidy paperwork, net metering and after-sales support.',
+      areaServed: districts,
+      slug: '/',
+    })
+  );
+
   return (
     <>
+      <JsonLd data={homeSchema} />
       <Hero
         banners={home.banners.home_hero ?? []}
         phone={home.company.phone}

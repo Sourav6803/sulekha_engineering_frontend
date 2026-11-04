@@ -76,7 +76,22 @@ export default function LeadForm({ districts = [], compact = false, title, subti
         pagePath: typeof window !== 'undefined' ? window.location.pathname : undefined,
         website: '',
       });
-      setStatus(result.data?.duplicate ? 'duplicate' : 'sent');
+      const duplicate = Boolean(result.data?.duplicate);
+      setStatus(duplicate ? 'duplicate' : 'sent');
+
+      /*
+       * GA4 conversion. Only a genuinely new enquiry counts — a repeat submit is
+       * the same person pressing the button twice, and counting it would inflate
+       * the one number the campaign spend is judged against.
+       */
+      if (!duplicate && typeof window !== 'undefined') {
+        (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag?.('event', 'generate_lead', {
+          source,
+          district: form.district || 'unknown',
+          value: form.systemSizeKW ? Number(form.systemSizeKW) : 0,
+          currency: 'INR',
+        });
+      }
     } catch (err) {
       const message =
         (err as { response?: { data?: { error?: { message?: string; details?: { message?: string }[] } } } })

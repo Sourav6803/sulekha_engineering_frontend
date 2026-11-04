@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import SiteHeader from '@/components/site/SiteHeader';
 import SiteFooter from '@/components/site/SiteFooter';
+import Analytics from '@/components/site/Analytics';
 import { getHomeCached } from '@/lib/site/server-data';
 
 /**
@@ -22,6 +23,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       <SiteHeader phone={company?.phone ?? null} />
       <main className="flex-1">{children}</main>
       {company && <SiteFooter company={company} />}
+      <Analytics />
     </div>
   );
 }
