@@ -159,6 +159,28 @@ export type HomePayload = {
     };
     disclaimer: string;
   };
+  /**
+   * What a system costs, before and after the subsidy. Optional so a page still
+   * renders against an API build that predates it.
+   */
+  cost?: {
+    rows: {
+      sizeKW: number;
+      priceFrom: number;
+      priceTo: number;
+      subsidy: number;
+      netFrom: number;
+      netTo: number;
+    }[];
+    finance: {
+      downPaymentPercent: number;
+      loanPercent: number;
+      interestRate: number;
+      collateralFree: boolean;
+    };
+    note: string;
+    financeNote: string;
+  };
   faqs: { question: string; answer: string }[];
   recentProjects: PublicProject[];
   generatedAt: string;
