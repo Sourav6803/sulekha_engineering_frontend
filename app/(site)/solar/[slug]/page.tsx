@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, Check, Phone } from 'lucide-react';
 import JsonLd from '@/components/site/JsonLd';
-import { BUSINESS, SITE_URL, TEL_HREF, WHATSAPP_HREF } from '@/lib/site/business';
+import { BUSINESS, TEL_HREF, WHATSAPP_HREF } from '@/lib/site/business';
 import { AREA_PAGES, SUBSIDY_PAGE } from '@/lib/site/landing';
 import {
   breadcrumbSchema,
@@ -15,6 +15,14 @@ import {
 } from '@/lib/site/seo';
 
 type Params = { params: Promise<{ slug: string }> };
+
+/**
+ * Only the areas in the list exist. The site layout reads the session, so these
+ * routes render on demand and an unknown slug answers with the not-found view
+ * rather than a hard 404; the flag is kept so the behaviour tightens on its own
+ * if the layout ever becomes static.
+ */
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return AREA_PAGES.map((page) => ({ slug: page.slug }));

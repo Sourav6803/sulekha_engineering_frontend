@@ -6,6 +6,7 @@ import StatsBar from '@/components/site/StatsBar';
 import SchemeBand from '@/components/site/SchemeBand';
 import OurWork from '@/components/site/OurWork';
 import SavingsCalculator from '@/components/site/SavingsCalculator';
+import CostSection from '@/components/site/CostSection';
 import ProcessTimeline from '@/components/site/ProcessTimeline';
 import BrandsSection from '@/components/site/BrandsSection';
 import PanelGuide from '@/components/site/PanelGuide';
@@ -127,6 +128,10 @@ export default async function HomePage() {
         subsidy={home.savings.subsidy}
         disclaimer={home.savings.disclaimer}
       />
+
+      {/* Right after the savings: "what will it save" is answered, so the next
+          question is "what does it cost me". */}
+      {home.cost && <CostSection cost={home.cost} />}
 
       <ProcessTimeline steps={home.process} />
 

@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const AUTH_COOKIE_NAME = 'sulekha_access_token';
-const PUBLIC_PATHS = ['/', '/login'];
+/**
+ * `/pm-surya-ghar-subsidy` is here for the same reason as the prefix list below:
+ * it is a public landing page. Without an entry the middleware answered it with
+ * a login redirect, which is also what a crawler would have seen.
+ */
+const PUBLIC_PATHS = ['/', '/login', '/pm-surya-ghar-subsidy'];
 
 /**
  * Whole sections a visitor may read without an account: the project gallery and
@@ -10,7 +15,7 @@ const PUBLIC_PATHS = ['/', '/login'];
  * as `/projects` — an exact-match list would have bounced every shared project
  * link to the staff login.
  */
-const PUBLIC_PREFIXES = ['/projects', '/enquiry'];
+const PUBLIC_PREFIXES = ['/projects', '/enquiry', '/solar'];
 
 const isPublicPath = (pathname: string) =>
   PUBLIC_PATHS.includes(pathname) ||
