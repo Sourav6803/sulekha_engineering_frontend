@@ -17,16 +17,16 @@ import {
 type Params = { params: Promise<{ slug: string }> };
 
 /**
- * Only the areas in the list exist. The site layout reads the session, so these
- * routes render on demand and an unknown slug answers with the not-found view
- * rather than a hard 404; the flag is kept so the behaviour tightens on its own
- * if the layout ever becomes static.
+ * Rendered per request, deliberately.
+ *
+ * With `generateStaticParams` these routes were pre-built, and the shared
+ * `(site)` layout reads the company block with `cache: 'no-store'`. Next hit that
+ * uncached read mid-prerender and shipped a client-side bailout shell: a 200
+ * whose HTML carried the root layout's title, no canonical and an empty <body>.
+ * Google indexes that HTML, not the hydrated result, so the page has to be
+ * rendered on the server. Unknown slugs still answer 404 through `notFound()`.
  */
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return AREA_PAGES.map((page) => ({ slug: page.slug }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;

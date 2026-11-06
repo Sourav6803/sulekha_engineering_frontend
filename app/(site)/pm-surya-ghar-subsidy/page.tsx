@@ -13,6 +13,13 @@ import {
   websiteSchema,
 } from '@/lib/site/seo';
 
+/**
+ * Per request, for the same reason as the district pages: the shared `(site)`
+ * layout reads the company block uncached, and prerendering this route produced
+ * a client-side bailout shell with none of the copy in the HTML.
+ */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: SUBSIDY_PAGE.metaTitle,
   description: SUBSIDY_PAGE.metaDescription,

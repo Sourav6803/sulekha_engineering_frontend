@@ -79,8 +79,8 @@ export default function Hero({
           </span>
 
           <h1 className="mt-5 font-display text-[2.15rem] font-semibold leading-[1.08] tracking-tight text-[var(--foreground)] sm:text-5xl lg:text-[3.4rem]">
-            Your roof can pay
-            <span className="relative ml-2 inline-block">
+            Your roof can pay{' '}
+            <span className="relative inline-block">
               <span className="relative z-10 text-[var(--primary)]">your bill.</span>
               <span
                 aria-hidden
