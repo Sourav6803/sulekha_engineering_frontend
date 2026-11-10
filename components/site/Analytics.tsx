@@ -12,6 +12,9 @@ import Script from 'next/script';
  * The measurement ID is a build-time public value (`NEXT_PUBLIC_GA_MEASUREMENT_ID`);
  * when it is unset nothing is loaded at all, so a preview deploy cannot pollute
  * the live property.
+ *
+ * Property "Sulekha Engineering" (563299072) under account 323711049, web stream
+ * 16300906468 for https://sulekhaengineering.com.
  */
 export default function Analytics() {
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
