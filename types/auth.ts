@@ -55,3 +55,18 @@ export interface AuthChangePasswordPayload {
   newPassword: string;
   confirmPassword: string;
 }
+
+export interface AuthForgotPasswordPayload {
+  email: string;
+}
+
+/**
+ * Mirrors backend/src/validations/auth.validation.js resetPasswordValidation:
+ * newPassword needs 8+ chars with an upper case letter, a lower case letter and
+ * a digit, confirmPassword has to equal it, and token comes from the email link.
+ */
+export interface AuthResetPasswordPayload {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}

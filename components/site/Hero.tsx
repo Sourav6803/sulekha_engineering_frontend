@@ -5,27 +5,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Phone, Sun, Zap } from 'lucide-react';
 import type { SiteBanner } from '@/types/site';
+import SolarEnergyScene from './SolarEnergyScene';
 
 /**
- * Shown only while the office has not uploaded hero artwork.
- *
- * It used to point at a stock photograph of somebody else's installation, which
- * is not ours to show and left a grey frame behind while a third-party host
- * answered. This is a local illustration — it reads as a drawing, so it never
- * pretends to be one of our roofs. Drop a real site photo over
- * `public/hero-fallback.jpg` (same name) to replace it.
+ * The hero's right-hand visual is a self-contained animated solar scene
+ * (see SolarEnergyScene) — no stock photo, no empty frame. Drop a real site
+ * photo in later by swapping <SolarEnergyScene /> for an <Image> if the office
+ * uploads one.
  */
-const FALLBACK_IMAGE = '/hero-fallback.jpg';
-const FALLBACK_ALT = 'Illustration of a rooftop solar array on a West Bengal home';
-
 type Props = {
   banners: SiteBanner[];
   phone?: string | null;
   subsidyCap: number;
   unitsPerKWPerDay: number;
   unitsPerKWPerDayMax: number;
-  projects: number;
-  capacityKW: number;
 };
 
 /**
@@ -41,8 +34,6 @@ export default function Hero({
   subsidyCap,
   unitsPerKWPerDay,
   unitsPerKWPerDayMax,
-  projects,
-  capacityKW,
 }: Props) {
   const [index, setIndex] = useState(0);
 
@@ -121,12 +112,12 @@ export default function Hero({
 
           <dl className="mt-9 grid max-w-xl grid-cols-3 gap-4 border-t border-[var(--border)] pt-6">
             {[
-              { label: 'Installations', value: projects > 0 ? `${projects}+` : 'On the way' },
-              { label: 'Capacity built', value: capacityKW > 0 ? `${capacityKW} kW` : '—' },
+              { label: 'Site survey', value: 'Free' },
               { label: 'Panel warranty', value: '25 years' },
+              { label: 'Service area', value: 'West Bengal' },
             ].map((item) => (
               <div key={item.label}>
-                <dd className="text-xl font-semibold tracking-tight text-[var(--foreground)]">{item.value}</dd>
+                <dd className="text-base font-semibold leading-6 tracking-tight text-[var(--foreground)] sm:text-xl">{item.value}</dd>
                 <dt className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-soft)]">
                   {item.label}
                 </dt>
@@ -136,15 +127,8 @@ export default function Hero({
         </div>
 
         <div className="relative">
-          <div className="relative aspect-[4/3.4] w-full overflow-hidden rounded-[7rem_2rem_2rem_2rem] bg-[var(--primary-tint)] shadow-[var(--shadow)] ring-1 ring-black/5">
-            <Image
-              src={FALLBACK_IMAGE}
-              alt={FALLBACK_ALT}
-              fill
-              sizes="(max-width: 1024px) 100vw, 560px"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+          <div className="relative w-full overflow-hidden rounded-[7rem_2rem_2rem_2rem] bg-gradient-to-br from-[var(--primary-tint)] to-[#EAF8F0] p-4 shadow-[var(--shadow)] ring-1 ring-black/5 sm:p-6">
+            <SolarEnergyScene />
           </div>
 
           {/* Floating proof cards — the two numbers a visitor actually asks about. */}

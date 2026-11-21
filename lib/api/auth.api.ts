@@ -1,8 +1,10 @@
 import type { ApiResponse } from '@/types/api';
 import type {
   AuthChangePasswordPayload,
+  AuthForgotPasswordPayload,
   AuthLoginPayload,
   AuthLoginResponse,
+  AuthResetPasswordPayload,
   AuthUser,
 } from '@/types/auth';
 import axiosClient from './axiosClient';
@@ -12,6 +14,24 @@ export const authApi = {
   login: (payload: AuthLoginPayload) =>
     axiosClient
       .post<ApiResponse<AuthLoginResponse>>(ENDPOINTS.auth.login, payload)
+      .then((response) => response.data),
+
+  /**
+   * Request a password-reset link. The server always answers the same way
+   * whether or not the email exists, so the caller cannot use it to probe for
+   * accounts.
+   */
+  forgotPassword: (payload: AuthForgotPasswordPayload) =>
+    axiosClient
+      .post<ApiResponse<null>>(ENDPOINTS.auth.forgotPassword, payload)
+      .then((response) => response.data),
+
+  /**
+   * Complete a reset with the token from the email link and a new password.
+   */
+  resetPassword: (payload: AuthResetPasswordPayload) =>
+    axiosClient
+      .post<ApiResponse<null>>(ENDPOINTS.auth.resetPassword, payload)
       .then((response) => response.data),
 
   /**

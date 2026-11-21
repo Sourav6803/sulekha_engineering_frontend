@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowUpRight } from 'lucide-react';
 import type { HomePayload } from '@/types/site';
+import FooterScene from './FooterScene';
 
 /**
  * A closing line, not a second sitemap.
@@ -18,6 +19,12 @@ export default function SiteFooter({ company }: { company: HomePayload['company'
 
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--background)] pb-6 pt-10">
+      {/* Animated solar skyline band */}
+      <div className="mx-auto mb-10 max-w-[1180px] overflow-hidden rounded-[1.5rem] px-5 lg:px-8">
+        <div className="overflow-hidden rounded-[1.5rem] ring-1 ring-[var(--border-soft)]">
+          <FooterScene />
+        </div>
+      </div>
       <div className="mx-auto max-w-[1180px] px-5 lg:px-8">
         <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
           <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label={`${company.name} — home`}>

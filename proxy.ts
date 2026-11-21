@@ -6,8 +6,13 @@ const AUTH_COOKIE_NAME = 'sulekha_access_token';
  * `/pm-surya-ghar-subsidy` is here for the same reason as the prefix list below:
  * it is a public landing page. Without an entry the middleware answered it with
  * a login redirect, which is also what a crawler would have seen.
+ *
+ * `/forgot-password` and `/reset-password` are reached by signed-out users by
+ * definition — they are recovering an account they cannot log into — so they
+ * have to be public, otherwise the proxy bounces them to /login the moment the
+ * "Forgot password?" link is clicked.
  */
-const PUBLIC_PATHS = ['/', '/login', '/pm-surya-ghar-subsidy'];
+const PUBLIC_PATHS = ['/', '/login', '/forgot-password', '/reset-password', '/pm-surya-ghar-subsidy'];
 
 /**
  * Whole sections a visitor may read without an account: the project gallery and

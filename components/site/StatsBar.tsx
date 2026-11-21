@@ -1,29 +1,19 @@
-import { MapPin, Sun, TrendingUp, Users } from 'lucide-react';
-import type { HomePayload } from '@/types/site';
+import { BadgeCheck, ClipboardCheck, Headphones, Sun } from 'lucide-react';
 
-/**
- * Live totals from the showcase collection.
- *
- * When nothing has been published yet the bar would read "0 homes, 0 kW" and
- * undermine the page, so it falls back to facts that are true regardless: the
- * scheme's own numbers.
- */
-export default function StatsBar({ stats }: { stats: HomePayload['stats'] }) {
-  const live = stats.projects > 0;
+type Props = {
+  subsidyCap: number;
+  unitsPerKWPerDay: number;
+  unitsPerKWPerDayMax: number;
+};
 
-  const items = live
-    ? [
-        { label: 'Installations completed', value: `${stats.projects}`, icon: Sun },
-        { label: 'Capacity commissioned', value: `${stats.capacityKW.toLocaleString('en-IN')} kW`, icon: TrendingUp },
-        { label: 'Districts served', value: `${stats.districts}`, icon: MapPin },
-        { label: 'Panel brands fitted', value: `${stats.brandsInstalled}`, icon: Users },
-      ]
-    : [
-        { label: 'Free units a month', value: '300', icon: Sun },
-        { label: 'Central subsidy cap', value: '₹78,000', icon: TrendingUp },
-        { label: 'Districts covered', value: '23', icon: MapPin },
-        { label: 'Panel performance warranty', value: '25 yrs', icon: Users },
-      ];
+/** A concise proof strip focused on the offer and service, not installation totals. */
+export default function StatsBar({ subsidyCap, unitsPerKWPerDay, unitsPerKWPerDayMax }: Props) {
+  const items = [
+    { label: 'Central subsidy cap', value: `Up to ₹${subsidyCap.toLocaleString('en-IN')}`, icon: BadgeCheck },
+    { label: 'Typical generation', value: `${unitsPerKWPerDay}–${unitsPerKWPerDayMax} units / kW / day`, icon: Sun },
+    { label: 'Project support', value: 'Survey to net meter', icon: ClipboardCheck },
+    { label: 'After installation', value: 'After-sales support', icon: Headphones },
+  ];
 
   return (
     <section className="border-b border-[var(--border-soft)] bg-white">

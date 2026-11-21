@@ -1,7 +1,7 @@
 export const AUTH_COOKIE_NAME = 'sulekha_access_token';
 export const AUTH_REFRESH_COOKIE_NAME = 'sulekha_refresh_token';
 
-export const AUTH_PUBLIC_PATHS = ['/', '/login'];
+export const AUTH_PUBLIC_PATHS = ['/', '/login', '/forgot-password', '/reset-password'];
 
 export const AUTH_REDIRECT_PATHS = {
   login: '/login',

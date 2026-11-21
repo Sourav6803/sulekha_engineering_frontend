@@ -110,11 +110,13 @@ export default async function HomePage() {
         subsidyCap={home.savings.subsidy.cap}
         unitsPerKWPerDay={home.savings.assumptions.unitsPerKWPerDay}
         unitsPerKWPerDayMax={home.savings.assumptions.unitsPerKWPerDayMax}
-        projects={home.stats.projects}
-        capacityKW={home.stats.capacityKW}
       />
 
-      <StatsBar stats={home.stats} />
+      <StatsBar
+        subsidyCap={home.savings.subsidy.cap}
+        unitsPerKWPerDay={home.savings.assumptions.unitsPerKWPerDay}
+        unitsPerKWPerDayMax={home.savings.assumptions.unitsPerKWPerDayMax}
+      />
 
       <SchemeBand banners={home.banners.scheme_strip ?? []} subsidy={home.savings.subsidy} />
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AuthSession } from '@/lib/auth/session';
 import { Sun, Zap, Shield, Users, TrendingUp, MapPin, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const HERO_SLIDES = [
   {
@@ -347,9 +348,17 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password" className="form-label">
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="form-label">
+                      Password
+                    </label>
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm font-medium text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <input
                       id="password"

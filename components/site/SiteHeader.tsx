@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight, LayoutDashboard, Menu, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, LayoutDashboard, Menu, MessageCircle, X } from 'lucide-react';
 import { AuthSession } from '@/lib/auth/session';
 
 /**
@@ -100,6 +100,17 @@ export default function SiteHeader({ phone }: { phone?: string | null }) {
               <ArrowUpRight className="h-3.5 w-3.5" />
             )}
           </Link>
+
+          <a
+            href="https://wa.me/919832117393?text=Hi%2C%20I%20want%20to%20know%20about%20rooftop%20solar%20subsidy"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Chat with us on WhatsApp"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm transition hover:bg-[#1DA851] sm:h-auto sm:w-auto sm:gap-2 sm:rounded-[10px] sm:px-3.5 sm:py-2.5 sm:text-[12.5px] sm:font-semibold"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </a>
 
           <Link href="/enquiry" className="brand-button hidden !rounded-[10px] !px-4 !py-2.5 text-[12.5px] sm:inline-flex">
             Book a free survey
